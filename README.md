@@ -1,7 +1,7 @@
 # Hybrid Optimization Framework for Social Dynamics Modeling
 
 ## 🎯 Project Overview
-This repository contains the technical implementation and research for my Master's thesis: `**Parametric Calibration of a Mathematical Model of the 2019 Chilean Social Unrest using a Hybrid Optimization Approach.**` The project addresses the challenges of calibrating discrete-time differential equations in systems with high numerical instability and complex spatial interactions.
+This repository contains the technical implementation and research for my Master's thesis: **`Parametric Calibration of a Mathematical Model of the 2019 Chilean Social Unrest using a Hybrid Optimization Approach.`** The project addresses the challenges of calibrating discrete-time differential equations in systems with high numerical instability and complex spatial interactions.
 
 ## 🛠️ Tech Stack & Key Innovations
 - Simulation Engine: Built entirely from scratch using PyTorch. This implementation enables GPU acceleration (A100/L4), achieving a 112x speedup compared to the original NumPy/CPU baseline.
