@@ -28,14 +28,6 @@ def process_simulation_output(Rj_t, method='linear', prominence=0.05, lowess_fra
     x = np.arange(len(Rj_t))
     y = Rj_t
 
-    # Normalize for peak detection stability if needed, or just use raw if scaled?
-    # In DE notebook, Rj_t is scaled first then peaks found.
-    # In PyTorch notebook, y is min-max normalized manually then peaks found.
-
-    # Let's handle scaling inside or outside?
-    # Usually it's better to work with what we have.
-    # If we assume input is raw Rj_t, we might want to normalize for peak detection.
-
     y_norm = (y - np.min(y)) / (np.max(y) - np.min(y)) if (np.max(y) - np.min(y)) > 0 else y
 
     peaks, _ = find_peaks(y_norm, prominence=prominence)
