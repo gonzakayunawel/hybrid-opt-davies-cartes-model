@@ -20,7 +20,7 @@ def load_data(data_dir):
         origin = np.loadtxt(os.path.join(data_dir, "origin_dens_500m_5am10am.dat"))
         destination = np.loadtxt(os.path.join(data_dir, "destination_dens_500m_5am10am.dat"))
         targets = np.loadtxt(os.path.join(data_dir, "targets_500.dat"))
-        distances = np.load(os.path.join(data_dir, "rij_500_no_network.npy"))
+        distances = np.load(os.path.join(data_dir, "rij_500_no_network.npy"), allow_pickle=False)
         return origin, destination, targets, distances
     except FileNotFoundError as e:
         print(f"Error loading data: {e}")
