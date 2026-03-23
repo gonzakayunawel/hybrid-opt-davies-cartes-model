@@ -1,14 +1,49 @@
 import numpy as np
 import statsmodels.api as sm
-from sklearn.preprocessing import MinMaxScaler
 from scipy.signal import find_peaks
+
+class NumPyMinMaxScaler:
+    """
+    A lightweight replacement for sklearn's MinMaxScaler using NumPy.
+    Provides fit, transform, and inverse_transform for 1D arrays.
+    """
+    def __init__(self, feature_range=(0, 1)):
+        self.min_ = None
+        self.scale_ = None
+        self.data_min_ = None
+        self.data_max_ = None
+        self.feature_range = feature_range
+
+    def fit(self, data):
+        self.data_min_ = np.min(data)
+        self.data_max_ = np.max(data)
+        data_range = self.data_max_ - self.data_min_
+
+        if data_range == 0:
+            self.scale_ = 0.0
+        else:
+            self.scale_ = (self.feature_range[1] - self.feature_range[0]) / data_range
+
+        self.min_ = self.feature_range[0] - self.data_min_ * self.scale_
+        return self
+
+    def transform(self, data):
+        return data * self.scale_ + self.min_
+
+    def fit_transform(self, data):
+        return self.fit(data).transform(data)
+
+    def inverse_transform(self, data):
+        if self.scale_ == 0:
+            return np.full_like(data, self.data_min_)
+        return (data - self.min_) / self.scale_
 
 def scale_data(data):
     """
-    Scales data using MinMaxScaler.
+    Scales data using a lightweight NumPy implementation of MinMaxScaler.
     """
-    scaler = MinMaxScaler()
-    scaled_data = scaler.fit_transform(data.reshape(-1, 1)).flatten()
+    scaler = NumPyMinMaxScaler()
+    scaled_data = scaler.fit_transform(data)
     return scaled_data, scaler
 
 def process_simulation_output(Rj_t, method='linear', prominence=0.05, lowess_frac=0.1):
