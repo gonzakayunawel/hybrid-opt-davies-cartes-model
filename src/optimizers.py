@@ -54,50 +54,12 @@ class ParticleSwarmOptimizer:
         positions = (max_bounds - min_bounds) * torch.rand(self.n_particles, dim, device=self.device) + min_bounds
         velocities = torch.zeros(self.n_particles, dim, device=self.device)
 
-        personal_best_pos = positions.clone()
-        personal_bests = torch.full((self.n_particles, 1), float('inf'), device=self.device)
-
         # Initial evaluation
         fitnesses = self.objective_function(positions)
         if fitnesses.ndim == 1:
             fitnesses = fitnesses.unsqueeze(1)
 
-        personal_bests = torch.minimum(fitnesses, personal_bests)
-        # Update personal best positions based on fitness improvement
-        update_mask = (fitnesses < personal_bests).squeeze()
-        # Initial update_mask is false everywhere because personal_bests is initialized to inf,
-        # so fitnesses < inf is true everywhere. Wait.
-        # personal_bests initialized to inf.
-        # fitnesses < inf is True.
-        # So update_mask is all True.
-        # Wait, torch.minimum updates personal_bests with values from fitnesses.
-        # But we need to update personal_best_pos too.
-        # The logic in original code was:
-        # personal_bests = torch.minimum(fitnesses, personal_bests)
-        # personal_best_pos = torch.where(fitnesses < personal_bests, positions, personal_best_pos)
-        # But personal_bests is already updated in the line above!
-        # Original code logic:
-        # personal_bests = torch.full((n, 1), float('inf'), device=device)
-        # fitnesses = objective_function(positions)
-        # personal_bests = torch.minimum(fitnesses, personal_bests)
-        # personal_best_pos = torch.where(fitnesses < personal_bests, positions, personal_best_pos)
-        # This is incorrect because personal_bests == fitnesses after torch.minimum. So fitnesses < personal_bests is False.
-        # Ah, original code had a bug or I misread it?
-        # Let's check original code provided in previous turn.
-        # "personal_bests = torch.minimum(fitnesses, personal_bests)"
-        # "personal_best_pos = torch.where(fitnesses < personal_bests, positions, personal_best_pos)"
-        # Yes, if personal_bests is updated first, then fitnesses < personal_bests is False (or equal).
-        # So personal_best_pos is never updated if it relies on strict inequality.
-        # UNLESS personal_bests was NOT updated in place but reassigned.
-        # But `torch.minimum` returns a new tensor.
-        # So `personal_bests` (new) = min(fitnesses, `personal_bests` (old)).
-        # But in the `torch.where` line, `personal_bests` refers to the NEW one? Yes.
-        # So `fitnesses < personal_bests` (new) implies `fitnesses < min(fitnesses, old)`.
-        # This is impossible unless `fitnesses` is smaller than itself.
-        # So the original code logic for initialization seems flawed if copied verbatim.
-
-        # However, for initialization, we know `fitnesses` are the best seen so far (since it's the first step).
-        # So we can just set:
+        # For initialization, we know `fitnesses` are the best seen so far (since it's the first step).
         personal_bests = fitnesses.clone()
         personal_best_pos = positions.clone()
 
