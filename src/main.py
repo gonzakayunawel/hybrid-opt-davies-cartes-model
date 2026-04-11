@@ -5,7 +5,7 @@ import os
 import sys
 
 # Ensure src is in path if running directly
-sys.path.append(os.getcwd())
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.engine import DaviesModel
 from src.preprocessing import scale_data, process_simulation_output
