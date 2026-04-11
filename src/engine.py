@@ -1,6 +1,5 @@
 import torch
 import numpy as np
-import time
 
 class DaviesModel:
     def __init__(self, dij, Ii, Zj, device=None, Nt=500, Ntt=10):
@@ -48,7 +47,6 @@ class DaviesModel:
         Ii_t = self.Ii.clone()
 
         # Precompute dij term
-        # dij_t = 1.0 * Zj_t[:, 2] * auxij1 / torch.max(Zj_t[:, 2])
         # Note: self.dij is already on device
         auxij1 = torch.exp(-beta_r * self.dij)
         target_values = self.Zj[:, 2]
@@ -71,7 +69,6 @@ class DaviesModel:
                 Wi_t = Wij_t.sum(dim=2)
 
                 # P_off computation
-                # P_off_t = rho_t * Wi_t / (1.0 + Wi_t)
 
                 # Delayed term computation for rioters
                 idxr = counter - (self.Lr) * int(counter / self.Lr)
@@ -118,30 +115,7 @@ class DaviesModel:
                 # sum(dim=2) -> (78, 71).
 
                 # Time step for Ai and Ii
-                P_off_t = rho_t * Wi_t / (1.0 + Wi_t) # Recalculated? No, Wi_t is updated?
-                # Wait, Wi_t depends on Wij_t which depends on fj_t and dij_t.
-                # fj_t changes at the end of loop?
-                # In the notebook loop:
-                # 1. fj_t calculated from Pj_t and Rj_t.
-                # 2. Wij_t, Wi_t, P_off_t calculated.
-                # 3. We_ij_t calculated (using fj_t).
-                # 4. Sij_t, Rj_t calculated.
-                # 5. Dj_t, Pj_t calculated.
-                # 6. counter += 1
-                # 7. fj_t updated again? "fj_t = 1.0 - torch.exp(...)" -> Capture rate?
-                #    In the notebook:
-                #    "fj_t = 1.0 - torch.exp(-torch.floor(Pj_t / (Rj_t + 1.0e-20))) # Capture rate"
-                #    "Ci_t = tau * torch.sum(Sij_t * fj_t, dim=2)"
-                #    "Ai_t += dt * (eta * P_off_t * Ii_t - Ci_t)"
-
-                # Yes, there are two usages of `fj_t`.
-                # One at the start: `fj_t = torch.exp(-torch.floor(gamma_r * Pj_t / (Rj_t + 1.0e-20)))`
-                # One at the end: `fj_t = 1.0 - torch.exp(-torch.floor(Pj_t / (Rj_t + 1.0e-20)))`
-
-                # The first one seems to be an attractiveness factor?
-                # The second one is capture rate?
-
-                # Let's trace variables carefully.
+                P_off_t = rho_t * Wi_t / (1.0 + Wi_t)
 
                 # Initial fj_t (Attractiveness):
                 fj_attr = torch.exp(-torch.floor(gamma_r * Pj_t / (Rj_t + 1.0e-20)))
