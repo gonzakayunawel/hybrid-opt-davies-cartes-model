@@ -71,7 +71,7 @@ class DaviesModel:
                 # P_off computation
 
                 # Delayed term computation for rioters
-                idxr = counter - (self.Lr) * int(counter / self.Lr)
+                idxr = counter % self.Lr
                 fjdel_t[:, idxr] = fj_t
                 dnm = self.Lr if counter >= self.Lr else counter + 1
                 We_ij_t = fjdel_t.sum(dim=1) * dij_t / dnm
@@ -97,7 +97,7 @@ class DaviesModel:
                 Dj_t[:] = target_values ** (alpha_p) * torch.exp(gamma_p * Rj_t[:])
 
                 # Delayed term computation for police
-                idxp = counter - (self.Lp) * int(counter / self.Lp)
+                idxp = counter % self.Lp
                 Ddel_t[:, idxp] = Dj_t[:]
                 dnm = self.Lp if counter >= self.Lp else counter + 1
                 Dej_t = torch.sum(Ddel_t, dim=1) / dnm
@@ -124,7 +124,7 @@ class DaviesModel:
                 Wi_t = Wij_t.sum(dim=2)
                 P_off_t = rho_t * Wi_t / (1.0 + Wi_t)
 
-                idxr = counter - (self.Lr) * int(counter / self.Lr)
+                idxr = counter % self.Lr
                 fjdel_t[:, idxr] = fj_attr # Storing attractiveness factor
                 dnm = self.Lr if counter >= self.Lr else counter + 1
 
@@ -137,7 +137,7 @@ class DaviesModel:
 
                 Dj_t[:] = target_values ** (alpha_p) * torch.exp(gamma_p * Rj_t[:])
 
-                idxp = counter - (self.Lp) * int(counter / self.Lp)
+                idxp = counter % self.Lp
                 Ddel_t[:, idxp] = Dj_t[:]
                 dnm = self.Lp if counter >= self.Lp else counter + 1
                 Dej_t = torch.sum(Ddel_t, dim=1) / dnm
