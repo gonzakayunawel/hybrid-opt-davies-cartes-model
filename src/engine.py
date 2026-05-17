@@ -2,7 +2,7 @@ import torch
 
 class DaviesModel:
     def __init__(self, dij, Ii, Zj, device=None, Nt=500, Ntt=10):
-        self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu") # FIXED: #2
+        self.device = device if device is not None else torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.dij = torch.from_numpy(dij).to(self.device).float()
 
         self.Ii = torch.from_numpy(Ii).to(self.device).float()

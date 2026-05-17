@@ -106,15 +106,14 @@ def test_print_metrics_output():
 
 def test_plot_results_calls():
     """
-    Verify that plot_results calls matplotlib functions correctly.
+    Verify that plot_results creates 4 separate single-axes figures.
     """
     mock_plt = MagicMock()
     mock_fig = MagicMock()
-    mock_ax1 = MagicMock()
-    mock_ax2 = MagicMock()
-    mock_plt.subplots.return_value = (mock_fig, (mock_ax1, mock_ax2))
+    mock_ax = MagicMock()
+    # FIXED: #1 — plot_results does fig, ax = subplots(...) (single axes per figure)
+    mock_plt.subplots.return_value = (mock_fig, mock_ax)
 
-    # We must patch src.utils.plt AFTER the module is imported but during the test
     with patch.dict(sys.modules, {
         'numpy': MagicMock(),
         'matplotlib': MagicMock(),
@@ -127,7 +126,6 @@ def test_plot_results_calls():
         if 'src.utils' in sys.modules:
             del sys.modules['src.utils']
         import src.utils
-        # Inject the mock directly to ensure it is used
         src.utils.plt = mock_plt
         from src.utils import plot_results
 
@@ -138,7 +136,7 @@ def test_plot_results_calls():
 
         plot_results(real, predicted)
 
-        mock_plt.subplots.assert_called_once()
-        assert mock_ax1.plot.called
-        assert mock_ax2.plot.called
-        mock_plt.show.assert_called_once()
+        # FIXED: #1 — 4 figures are created, each with its own subplots/show/close call
+        assert mock_plt.subplots.call_count == 4
+        assert mock_plt.show.call_count == 4
+        assert mock_ax.fill_between.called  # ranked activity chart uses fill_between

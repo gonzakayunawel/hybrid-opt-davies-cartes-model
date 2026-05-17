@@ -48,12 +48,12 @@ def load_data(data_dir: str):
         origin = np.loadtxt(os.path.join(data_dir, "origin_dens_500m_5am10am.dat"))
         destination = np.loadtxt(os.path.join(data_dir, "destination_dens_500m_5am10am.dat"))
         targets = np.loadtxt(os.path.join(data_dir, "targets_500.dat"))
-        distances = np.load(os.path.join(data_dir, "rij_500_no_network.npy"))
+        distances = np.load(os.path.join(data_dir, "rij_500_no_network.npy"), allow_pickle=False)  # FIXED: #2
         return origin, destination, targets, distances
     except FileNotFoundError as e:
         console.print(r"[bold red]\[Error][/bold red] Data file not found: " + str(e))
         sys.exit(1)
-    except Exception as e:
+    except (OSError, ValueError) as e:  # FIXED: #3 — specific exceptions; OSError covers PermissionError/IOError, ValueError covers corrupt data
         console.print(r"[bold red]\[Error][/bold red] Unexpected error loading data: " + str(e))
         sys.exit(1)
 

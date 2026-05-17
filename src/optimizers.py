@@ -54,7 +54,7 @@ class ParticleSwarmOptimizer:
         self.w_range = w_range
         self.c1 = c1
         self.c2 = c2
-        self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = device if device is not None else torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.tol = tol
         self.patience = patience
         self.best_position = None

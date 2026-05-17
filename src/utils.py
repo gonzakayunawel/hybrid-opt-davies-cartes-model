@@ -263,7 +263,7 @@ def plot_heatmaps(real_v, predicted_v, Zj, title="Spatial Distribution Compariso
         for i in range(len(values)):
             lat_idx = np.abs(lat_unique - Zj_coords[i, 0]).argmin()
             lon_idx = np.abs(lon_unique - Zj_coords[i, 1]).argmin()
-            grid[lat_idx, lon_idx] = values[i]
+            grid[lat_idx, lon_idx] += values[i]  # FIXED: #4 — accumulate; last-write-wins silently drops colliding zones
         return grid
 
     real_grid = map_to_grid(real_v, Zj)
@@ -289,7 +289,7 @@ def plot_heatmaps(real_v, predicted_v, Zj, title="Spatial Distribution Compariso
         z = f(pts).reshape(xx.shape)
         
         # Gaussian smoothing
-        z_smooth = gaussian_filter(z, sigma=0.05)
+        z_smooth = gaussian_filter(z, sigma=1.0)  # FIXED: #5 — sigma=0.05 was sub-pixel (no-op); 1.0 gives visible smoothing
         
         im = ax.imshow(z_smooth, cmap='magma_r', extent=[0, cols, 0, rows], origin='lower')
         ax.set_title(d_title, fontsize=14)
@@ -298,7 +298,7 @@ def plot_heatmaps(real_v, predicted_v, Zj, title="Spatial Distribution Compariso
         ax.grid(True, linestyle='--', alpha=0.3)
         plt.colorbar(im, ax=ax, shrink=0.7, label='Intensity')
 
-    plt.tight_layout()
+    plt.tight_layout(rect=[0, 0, 1, 0.95])  # FIXED: #6 — reserve top 5% for suptitle so it isn't clipped
     prefix = f"{optimizer_name}_" if optimizer_name else ""
     if output_dir:
         path = os.path.join(output_dir, f"{prefix}spatial_heatmap.png")
