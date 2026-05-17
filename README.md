@@ -55,14 +55,22 @@ The search space for parameters (`beta_r`, `gamma_r`, `alpha_p`, `gamma_p`) is m
 
 ### 6. Exploring the Output
 Each experiment creates a timestamped folder inside `results/` (e.g., `mission_20260516_183005/`) containing:
-- `best_results.json`: A detailed summary of the best parameters found, search bounds, and statistical metrics.
-- `Rj_final.npy`: The raw simulation output (normalized attack density) for further analysis.
-- `diagnostic_plots.png`: A 2x2 panel showing Ranked Hotspots, Distributions, ECDF, and Residuals.
-- `spatial_heatmap.png`: High-resolution side-by-side geographic comparison (Simulated vs Real SOSAFE data).
+- `[optimizer]_best_results.json`: A detailed summary of the best parameters found, search bounds, and statistical metrics.
+- `[optimizer]_Rj_final.npy`: The raw simulation output (normalized attack density) for further analysis.
+- `[optimizer]_ranked_activity.png`: Comparison of real vs predicted intensity ranked by site.
+- `[optimizer]_density_distribution.png`: Histogram comparison of attack densities.
+- `[optimizer]_ecdf.png`: Empirical Cumulative Distribution Function comparison.
+- `[optimizer]_residuals.png`: Spatial error analysis (Real - Predicted).
+- `[optimizer]_spatial_heatmap.png`: High-resolution side-by-side geographic comparison.
 
 ## 📂 Repository Structure
 - `/notebooks:` Development history, including the transition from NumPy/TensorFlow experiments to the production-ready PyTorch architecture.
 - `/src:` Modularized Python scripts including engine.py (differential equations), optimizer.py (Custom PSO class), and preprocessing.py.
+- `/data:` Managed environment for ingesting SOSAFE reports and Santiago's Metro (Subway) network accessibility data.
+
+## 🚀 Future Business Application (2026)
+This framework is designed to be highly modular, serving as a template for **Industrial Data Analytics Consulting**. The core optimization engine can be adapted for logistics, inventory forecasting, and urban mobility challenges.
+essing.py.
 - `/data:` Managed environment for ingesting SOSAFE reports and Santiago's Metro (Subway) network accessibility data.
 
 ## 🚀 Future Business Application (2026)
