@@ -6,3 +6,4 @@ matplotlib
 statsmodels
 ruff
 rich
+cupy-cuda12x
