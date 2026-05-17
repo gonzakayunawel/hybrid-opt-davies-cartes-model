@@ -24,7 +24,7 @@ def set_seed(seed: int):
         torch.backends.cudnn.benchmark = False
     console.print(fr"[bold blue]\[Discovery][/bold blue] Seed set to: [bold cyan]{seed}[/bold cyan]")
 
-def save_results(params, error, elapsed_time, seed, Rj_final, target_scaled, output_dir, optimizer_name):
+def save_results(params, error, elapsed_time, seed, Rj_final, target_scaled, output_dir, optimizer_name, bounds):
     """
     Saves optimization results and metrics to a JSON file and final simulation to NPY.
     """
@@ -32,17 +32,22 @@ def save_results(params, error, elapsed_time, seed, Rj_final, target_scaled, out
         os.makedirs(output_dir)
         console.print(fr"[bold blue]\[Discovery][/bold blue] Created output directory: [italic]{output_dir}[/italic]")
 
+    # Calculate metrics and handle NaNs for JSON compliance
+    raw_metrics = calculate_errors(Rj_final, target_scaled)
+    clean_metrics = {
+        k: (None if isinstance(v, float) and np.isnan(v) else v)
+        for k, v in raw_metrics.items()
+    }
+
     # Save metrics and params to JSON
     results_data = {
         "optimizer": optimizer_name,
         "seed": seed,
+        "bounds": bounds,
         "best_params": params if isinstance(params, list) else params.tolist(),
         "best_error": float(error),
         "elapsed_time_seconds": float(elapsed_time),
-        "metrics": {  # FIXED: #5 — replace NaN with null for valid JSON output
-            k: (None if isinstance(v, float) and v != v else v)
-            for k, v in calculate_errors(Rj_final, target_scaled).items()
-        }
+        "metrics": clean_metrics
     }
 
     json_path = os.path.join(output_dir, "best_results.json")
@@ -82,14 +87,14 @@ def calculate_errors(predicted, real):
     ks_stat, ks_p_value = ks_2samp(real, predicted)
 
     metrics = {
-        "rmse": rmse,
-        "mae": mae,
-        "mape": mape,
-        "smape": smape,
-        "r2": r2,
-        "max_error": np.max(np.abs(real - predicted)),
-        "ks_stat": ks_stat,
-        "ks_p_value": ks_p_value
+        "rmse": float(rmse),
+        "mae": float(mae),
+        "mape": float(mape),
+        "smape": float(smape),
+        "r2": float(r2),
+        "max_error": float(np.max(np.abs(real - predicted))),
+        "ks_stat": float(ks_stat),
+        "ks_p_value": float(ks_p_value)
     }
 
     return metrics

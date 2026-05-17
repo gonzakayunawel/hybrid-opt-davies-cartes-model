@@ -45,7 +45,20 @@ python src/main.py --optimizer pso --max_iter 10 --pop_size 5 --seed 42 --save -
 - `--save`: Automatically exports your results (JSON metrics and NPY vectors) to the `results/` folder.
 - `--plot`: Generates a visual comparison between the model and the real-world SOSAFE data.
 
-### 5. Exploring the Output
+### 5. Configuring Search Bounds
+The search space for parameters (`beta_r`, `gamma_r`, `alpha_p`, `gamma_p`) is managed via the `config.json` file in the root directory. You can adjust these ranges to explore different regions of the parameter space:
+```json
+{
+    "bounds": {
+        "beta_r": [0.05, 0.15],
+        "gamma_r": [0.15, 0.25],
+        "alpha_p": [0.05, 1.5],
+        "gamma_p": [0.01, 0.05]
+    }
+}
+```
+
+### 6. Exploring the Output
 Once the mission is complete, check the `results/` directory for:
 - `best_results.json`: A detailed summary of the best parameters found and statistical metrics.
 - `Rj_final.npy`: The raw simulation output for further analysis.

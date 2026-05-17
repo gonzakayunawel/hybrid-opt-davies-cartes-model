@@ -12,8 +12,29 @@ from src.preprocessing import scale_data, process_simulation_output
 from src.utils import calculate_errors, print_metrics, plot_results, set_seed, save_results
 from src.optimizers import DifferentialEvolutionOptimizer, ParticleSwarmOptimizer
 from rich.console import Console
+from scipy.optimize import minimize
+import json
+import time
 
 console = Console()
+
+def load_config(config_path):
+    """
+    Loads configuration from a JSON file.
+    """
+    try:
+        with open(config_path, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        console.print(fr"[bold red]\[Error][/bold red] Config file not found at {config_path}. Using default bounds.")
+        return {
+            "bounds": {
+                "beta_r": [0.05, 0.15],
+                "gamma_r": [0.15, 0.25],
+                "alpha_p": [0.05, 1.5],
+                "gamma_p": [0.01, 0.05]
+            }
+        }
 
 def load_data(data_dir):
     """
@@ -127,18 +148,24 @@ def main():
     target_raw = targets[:, 2]
     target_scaled, _ = scale_data(target_raw)
 
-    # Define bounds
-    # beta_r, gamma_r, alpha_p, gamma_p
-    # From DE notebook:
-    # bounds = [(0.05, 0.15), (0.15, 0.25), (0.05, 1.5), (0.01, 0.05)]
-    bounds_de = [(0.05, 0.15), (0.15, 0.25), (0.05, 1.5), (0.01, 0.05)]
+    # Load configuration
+    config = load_config(os.path.join(os.path.dirname(__file__), '..', 'config.json'))
+    b = config["bounds"]
+    
+    # Define bounds for DE (list of tuples)
+    bounds_de = [
+        tuple(b["beta_r"]),
+        tuple(b["gamma_r"]),
+        tuple(b["alpha_p"]),
+        tuple(b["gamma_p"])
+    ]
 
     # For PSO (PyTorch tensor)
     bounds_pso = torch.tensor([
-        [0.05, 0.15],
-        [0.15, 0.25],
-        [0.05, 1.5],
-        [0.01, 0.05]
+        b["beta_r"],
+        b["gamma_r"],
+        b["alpha_p"],
+        b["gamma_p"]
     ])
 
     # Reproducibility
@@ -171,7 +198,21 @@ def main():
             max_iter=args.max_iter,
             n_particles=args.pop_size
         )
-        best_params, best_error, elapsed_time = optimizer.optimize()
+        best_params, best_error, pso_time = optimizer.optimize()
+        
+        # HIBRID REFINEMENT: L-BFGS-B polishing for PSO
+        console.print("Polishing PSO solution with [bold yellow]L-BFGS-B[/bold yellow]...")
+        polish_start = time.time()
+        res = minimize(
+            objective_function,
+            best_params,
+            args=(model, target_scaled, args.method),
+            method='L-BFGS-B',
+            bounds=bounds_de
+        )
+        best_params = res.x
+        best_error = res.fun
+        elapsed_time = pso_time + (time.time() - polish_start)
 
     console.print("\n[bold green]Optimization Completed![/bold green]")
     console.print(f"Best Parameters: [bold yellow]{best_params}[/bold yellow]")
@@ -198,7 +239,8 @@ def main():
             scaled_Rj, 
             target_scaled, 
             args.output_dir, 
-            args.optimizer
+            args.optimizer,
+            config["bounds"]
         )
 
     if args.plot:
