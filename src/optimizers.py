@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 import time
 from scipy.optimize import differential_evolution

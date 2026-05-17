@@ -207,6 +207,6 @@ def perform_benchmark(data_dir, params):
     console.print(table)
     
     if pt_rmse != "N/A" and float(pt_rmse) < 1e-4:
-        console.print(fr"[bold green]\[Discovery][/bold green] Numerical equivalence [bold green]VALIDATED[/bold green] (Errors within tolerance).")
+        console.print(r"[bold green]\[Discovery][/bold green] Numerical equivalence [bold green]VALIDATED[/bold green] (Errors within tolerance).")
     else:
-        console.print(fr"[bold red]\[Discovery][/bold red] Numerical equivalence [bold red]WARNING[/bold red] (Significant discrepancy detected).")
+        console.print(r"[bold red]\[Discovery][/bold red] Numerical equivalence [bold red]WARNING[/bold red] (Significant discrepancy detected).")

@@ -55,12 +55,12 @@ def save_results(params, error, elapsed_time, seed, Rj_final, target_scaled, out
         "metrics": clean_metrics
     }
 
-    json_path = os.path.join(output_dir, "best_results.json")
+    json_path = os.path.join(output_dir, f"{optimizer_name}_best_results.json")
     with open(json_path, "w") as f:
         json.dump(results_data, f, indent=4)
     
     # Save final simulation Rj
-    npy_path = os.path.join(output_dir, "Rj_final.npy")
+    npy_path = os.path.join(output_dir, f"{optimizer_name}_Rj_final.npy")
     np.save(npy_path, Rj_final)
 
     console.print(fr"[bold blue]\[Discovery][/bold blue] Results saved to: [bold green]{output_dir}[/bold green]")
@@ -125,36 +125,51 @@ def print_metrics(predicted, real):
 
     console.print(table)
 
-def plot_results(real, predicted, title="Optimization Analysis", output_path=None):
+def plot_results(real, predicted, title="Optimization Analysis", output_dir=None, optimizer_name=None):
     """
-    Plots the real vs predicted values including ranked activity, histograms, and ECDF.
+    Plots the real vs predicted values as separate files: ranked activity, histograms, ECDF, and residuals.
     """
-    fig, axs = plt.subplots(2, 2, figsize=(16, 12))
-    fig.suptitle(title, fontsize=20, y=1.02)
+    prefix = f"{optimizer_name}_" if optimizer_name else ""
 
-    # 1. Ranked Activity Comparison (Methodological correction: Not a time-series!)
-    # Sort sites by real intensity (from highest to lowest)
+    # Shared data preparation
     sort_idx = np.argsort(real)[::-1]
     real_sorted = real[sort_idx]
     pred_sorted = predicted[sort_idx]
-    
     x_rank = np.arange(len(real))
-    axs[0, 0].fill_between(x_rank, real_sorted, color='blue', alpha=0.3, label='Real Intensity (SOSAFE)')
-    axs[0, 0].plot(x_rank, pred_sorted, color='orange', linewidth=1.5, label='Predicted Intensity (Model)')
-    axs[0, 0].set_title('Riot Activity Level per Site (Ranked)', fontsize=14)
-    axs[0, 0].set_xlabel('Riot Site Rank (Ordered by Real Intensity)', fontsize=12)
-    axs[0, 0].set_ylabel('Normalized Attack Density', fontsize=12)
-    axs[0, 0].legend()
-    axs[0, 0].grid(True, linestyle='--', alpha=0.5)
+
+    # 1. Ranked Activity Comparison
+    fig1, ax1 = plt.subplots(figsize=(10, 7))
+    ax1.fill_between(x_rank, real_sorted, color='blue', alpha=0.3, label='Real Intensity (SOSAFE)')
+    ax1.plot(x_rank, pred_sorted, color='orange', linewidth=1.5, label='Predicted Intensity (Model)')
+    ax1.set_title(f'Riot Activity Level per Site (Ranked) - {title}', fontsize=14)
+    ax1.set_xlabel('Riot Site Rank (Ordered by Real Intensity)', fontsize=12)
+    ax1.set_ylabel('Normalized Attack Density', fontsize=12)
+    ax1.legend()
+    ax1.grid(True, linestyle='--', alpha=0.5)
+    plt.tight_layout()
+    if output_dir:
+        path = os.path.join(output_dir, f"{prefix}ranked_activity.png")
+        fig1.savefig(path, bbox_inches='tight')
+        console.print(f"[bold blue]\[Discovery][/bold blue] Ranked activity plot saved to: [bold green]{path}[/bold green]")
+    plt.show()
+    plt.close(fig1)
 
     # 2. Histogram / Density Comparison
-    axs[0, 1].hist(real, bins=30, alpha=0.5, label='Real Attacks', color='blue', density=True)
-    axs[0, 1].hist(predicted, bins=30, alpha=0.5, label='Predicted Activity', color='orange', density=True)
-    axs[0, 1].set_title('Attack Density Distribution', fontsize=14)
-    axs[0, 1].set_xlabel('Activity Level', fontsize=12)
-    axs[0, 1].set_ylabel('Probability Density', fontsize=12)
-    axs[0, 1].legend()
-    axs[0, 1].grid(True, linestyle='--', alpha=0.3)
+    fig2, ax2 = plt.subplots(figsize=(10, 7))
+    ax2.hist(real, bins=30, alpha=0.5, label='Real Attacks', color='blue', density=True)
+    ax2.hist(predicted, bins=30, alpha=0.5, label='Predicted Activity', color='orange', density=True)
+    ax2.set_title(f'Attack Density Distribution - {title}', fontsize=14)
+    ax2.set_xlabel('Activity Level', fontsize=12)
+    ax2.set_ylabel('Probability Density', fontsize=12)
+    ax2.legend()
+    ax2.grid(True, linestyle='--', alpha=0.3)
+    plt.tight_layout()
+    if output_dir:
+        path = os.path.join(output_dir, f"{prefix}density_distribution.png")
+        fig2.savefig(path, bbox_inches='tight')
+        console.print(f"[bold blue]\[Discovery][/bold blue] Density distribution plot saved to: [bold green]{path}[/bold green]")
+    plt.show()
+    plt.close(fig2)
 
     # 3. ECDF Comparison (Kolmogorov-Smirnov basis)
     def ecdf(data):
@@ -166,32 +181,40 @@ def plot_results(real, predicted, title="Optimization Analysis", output_path=Non
     x_real, y_real = ecdf(real)
     x_pred, y_pred = ecdf(predicted)
 
-    axs[1, 0].step(x_real, y_real, label='Real ECDF', color='blue', where='post')
-    axs[1, 0].step(x_pred, y_pred, label='Predicted ECDF', color='orange', where='post')
-    axs[1, 0].set_title('Cumulative Activity Distribution (ECDF)', fontsize=14)
-    axs[1, 0].set_xlabel('Activity Level', fontsize=12)
-    axs[1, 0].set_ylabel('Cumulative Probability F(x)', fontsize=12)
-    axs[1, 0].legend()
-    axs[1, 0].grid(True, linestyle='--', alpha=0.5)
+    fig3, ax3 = plt.subplots(figsize=(10, 7))
+    ax3.step(x_real, y_real, label='Real ECDF', color='blue', where='post')
+    ax3.step(x_pred, y_pred, label='Predicted ECDF', color='orange', where='post')
+    ax3.set_title(f'Cumulative Activity Distribution (ECDF) - {title}', fontsize=14)
+    ax3.set_xlabel('Activity Level', fontsize=12)
+    ax3.set_ylabel('Cumulative Probability F(x)', fontsize=12)
+    ax3.legend()
+    ax3.grid(True, linestyle='--', alpha=0.5)
+    plt.tight_layout()
+    if output_dir:
+        path = os.path.join(output_dir, f"{prefix}ecdf.png")
+        fig3.savefig(path, bbox_inches='tight')
+        console.print(f"[bold blue]\[Discovery][/bold blue] ECDF plot saved to: [bold green]{path}[/bold green]")
+    plt.show()
+    plt.close(fig3)
 
     # 4. Residuals Plot (Spatial Error)
     residuals = real - predicted
-    axs[1, 1].scatter(x_rank, residuals, alpha=0.5, color='purple', s=10)
-    axs[1, 1].axhline(0, color='black', linestyle='--')
-    axs[1, 1].set_title('Residuals (Real - Predicted Intensity)', fontsize=14)
-    axs[1, 1].set_xlabel('Site Index', fontsize=12)
-    axs[1, 1].set_ylabel('Intensity Error', fontsize=12)
-    axs[1, 1].grid(True, linestyle='--', alpha=0.5)
-
+    fig4, ax4 = plt.subplots(figsize=(10, 7))
+    ax4.scatter(x_rank, residuals, alpha=0.5, color='purple', s=10)
+    ax4.axhline(0, color='black', linestyle='--')
+    ax4.set_title(f'Residuals (Real - Predicted Intensity) - {title}', fontsize=14)
+    ax4.set_xlabel('Site Index', fontsize=12)
+    ax4.set_ylabel('Intensity Error', fontsize=12)
+    ax4.grid(True, linestyle='--', alpha=0.5)
     plt.tight_layout()
-    
-    if output_path:
-        plt.savefig(output_path, bbox_inches='tight')
-        console.print(fr"[bold blue]\[Discovery][/bold blue] Diagnostic plots saved to: [bold green]{output_path}[/bold green]")
-    
+    if output_dir:
+        path = os.path.join(output_dir, f"{prefix}residuals.png")
+        fig4.savefig(path, bbox_inches='tight')
+        console.print(f"[bold blue]\[Discovery][/bold blue] Residuals plot saved to: [bold green]{path}[/bold green]")
     plt.show()
+    plt.close(fig4)
 
-def plot_heatmaps(real_v, predicted_v, Zj, title="Spatial Distribution Comparison", output_path=None):
+def plot_heatmaps(real_v, predicted_v, Zj, title="Spatial Distribution Comparison", output_dir=None, optimizer_name=None):
     """
     Creates side-by-side heatmaps for real vs predicted data with interpolation and smoothing.
     """
@@ -243,7 +266,9 @@ def plot_heatmaps(real_v, predicted_v, Zj, title="Spatial Distribution Compariso
         plt.colorbar(im, ax=ax, shrink=0.7, label='Intensity')
 
     plt.tight_layout()
-    if output_path:
-        plt.savefig(output_path, bbox_inches='tight')
-        console.print(fr"[bold blue]\[Discovery][/bold blue] Heatmap saved to: [bold green]{output_path}[/bold green]")
+    prefix = f"{optimizer_name}_" if optimizer_name else ""
+    if output_dir:
+        path = os.path.join(output_dir, f"{prefix}spatial_heatmap.png")
+        plt.savefig(path, bbox_inches='tight')
+        console.print(f"[bold blue]\[Discovery][/bold blue] Heatmap saved to: [bold green]{path}[/bold green]")
     plt.show()

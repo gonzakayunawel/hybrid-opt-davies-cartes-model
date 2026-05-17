@@ -1,5 +1,4 @@
 import torch
-import numpy as np
 
 class DaviesModel:
     def __init__(self, dij, Ii, Zj, device=None, Nt=500, Ntt=10):

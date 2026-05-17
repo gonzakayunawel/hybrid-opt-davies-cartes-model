@@ -12,7 +12,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.engine import DaviesModel
 from src.preprocessing import scale_data, process_simulation_output
-from src.utils import calculate_errors, print_metrics, plot_results, set_seed, save_results, plot_heatmaps
+from src.utils import print_metrics, plot_results, set_seed, save_results, plot_heatmaps
 from src.optimizers import DifferentialEvolutionOptimizer, ParticleSwarmOptimizer
 from rich.console import Console
 from scipy.optimize import minimize
@@ -221,11 +221,8 @@ def main():
         )
 
     if args.plot:
-        diag_path = os.path.join(mission_dir, "diagnostic_plots.png") if args.save else None
-        heat_path = os.path.join(mission_dir, "spatial_heatmap.png") if args.save else None
-        
-        plot_results(target_scaled, scaled_Rj, title=fr"Optimization Result ({args.optimizer.upper()})", output_path=diag_path)
-        plot_heatmaps(target_scaled, scaled_Rj, targets, title=fr"Spatial Intensity Map ({args.optimizer.upper()})", output_path=heat_path)
+        plot_results(target_scaled, scaled_Rj, title=f"Optimization Result ({args.optimizer.upper()})", output_dir=mission_dir if args.save else None, optimizer_name=args.optimizer if args.save else None)
+        plot_heatmaps(target_scaled, scaled_Rj, targets, title=f"Spatial Intensity Map ({args.optimizer.upper()})", output_dir=mission_dir if args.save else None, optimizer_name=args.optimizer if args.save else None)
 
 if __name__ == "__main__":
     main()
