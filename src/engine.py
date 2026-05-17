@@ -55,94 +55,53 @@ class DaviesModel:
         counter = 0
 
         for nn in range(self.Nt):
-            # Inner loop logic extracted from notebook
-            # The notebook has nested loops: for nn in range(Nt): for mm in range(Ntt):
-            # But inside the inner loop, it updates everything.
             for mm in range(self.Ntt):
-                # Calculate fj_t (Attractiveness modification by police)
+                # Calculate fj_t (Attractiveness modification by police - Deterrence)
                 fj_t = torch.exp(-torch.floor(gamma_r * Pj_t / (Rj_t + 1.0e-20)))
 
-                # Broadcasting for attractiveness term ij
+                # Effective Attractiveness
                 Wij_t = fj_t * dij_t
-
-                # Attractiveness term i
                 Wi_t = Wij_t.sum(dim=2)
-
-                # P_off computation
-
-                # Delayed term computation for rioters
-                idxr = counter % self.Lr
-                fjdel_t[:, idxr] = fj_t
-                dnm = self.Lr if counter >= self.Lr else counter + 1
-                We_ij_t = fjdel_t.sum(dim=1) * dij_t / dnm
-                # fjdel_t.sum(dim=1) is (500). dij_t is (78, 71, 500).
-                # (500) * (78, 71, 500) -> Broadcasts on last dim.
-                # We_ij_t is (78, 71, 500).
-
-                # Flow computation
-                auxw = Ai_t / (We_ij_t.sum(dim=2) + 1.0e-20)
-                # Ai_t is (78, 71). We_ij_t.sum(dim=2) is (78, 71).
-                # auxw is (78, 71).
-
-                Sij_t = auxw.unsqueeze(2) * We_ij_t
-                # auxw.unsqueeze(2) is (78, 71, 1). We_ij_t is (78, 71, 500).
-                # Sij_t is (78, 71, 500).
-
-                # Rioter computation
-                Rj_t = torch.sum(Sij_t.sum(dim=1), dim=0)
-                # Sij_t.sum(dim=1) is (78, 500).
-                # Then sum(dim=0) is (500).
-
-                # Police Interaction
-                Dj_t[:] = target_values ** (alpha_p) * torch.exp(gamma_p * Rj_t[:])
-
-                # Delayed term computation for police
-                idxp = counter % self.Lp
-                Ddel_t[:, idxp] = Dj_t[:]
-                dnm = self.Lp if counter >= self.Lp else counter + 1
-                Dej_t = torch.sum(Ddel_t, dim=1) / dnm
-
-                # Police allocation
-                Pj_t = self.Ptotal * Dej_t / Dej_t.sum()
-
-                counter += 1
-
-                # FIXED: #1, #2 — removed dead first-sub-step Ci_t (overwritten below) and
-                # dead P_off_t (also overwritten below); Block 1 is the predictor only.
-
-                # Second sub-step: recompute attractiveness with updated police allocation
-                fj_attr = torch.exp(-torch.floor(gamma_r * Pj_t / (Rj_t + 1.0e-20)))
-
-                Wij_t = fj_attr * dij_t
-                Wi_t = Wij_t.sum(dim=2)
+                
+                # Probability of rioting
                 P_off_t = rho_t * Wi_t / (1.0 + Wi_t)
 
+                # Delayed attractiveness effect storage (fjdel)
                 idxr = counter % self.Lr
-                fjdel_t[:, idxr] = fj_attr # Storing attractiveness factor
-                dnm = self.Lr if counter >= self.Lr else counter + 1
+                fjdel_t[:, idxr] = fj_t
+                dnm_r = self.Lr if counter >= self.Lr else counter + 1
+                We_ij_t = fjdel_t.sum(dim=1) * dij_t / dnm_r
 
-                We_ij_t = fjdel_t.sum(dim=1) * dij_t / dnm
-
+                # Flow computation
+                # Step 1: Normalization factor
                 auxw = Ai_t / (We_ij_t.sum(dim=2) + 1.0e-20)
+                
+                # Step 2: Spatial distribution
                 Sij_t = auxw.unsqueeze(2) * We_ij_t
 
+                # Rioter population at sites (Rj)
                 Rj_t = torch.sum(Sij_t.sum(dim=1), dim=0)
 
+                # Police Requirement (Dj)
                 Dj_t[:] = target_values ** (alpha_p) * torch.exp(gamma_p * Rj_t[:])
 
+                # Delayed police requirement storage (Ddel)
                 idxp = counter % self.Lp
                 Ddel_t[:, idxp] = Dj_t[:]
-                dnm = self.Lp if counter >= self.Lp else counter + 1
-                Dej_t = torch.sum(Ddel_t, dim=1) / dnm
+                dnm_p = self.Lp if counter >= self.Lp else counter + 1
+                Dej_t = torch.sum(Ddel_t, dim=1) / dnm_p
 
-                Pj_t = self.Ptotal * Dej_t / Dej_t.sum()
+                # Police allocation (Pj)
+                Pj_t = self.Ptotal * Dej_t / (Dej_t.sum() + 1.0e-20)
 
+                # Increment counter ONCE per sub-step
                 counter += 1
 
-                # Second fj_t (Capture):
+                # Capture Rate (fj_cap) based on updated police
                 fj_cap = 1.0 - torch.exp(-torch.floor(Pj_t / (Rj_t + 1.0e-20)))
                 Ci_t = self.tau * torch.sum(Sij_t * fj_cap, dim=2)
 
+                # Evolution of Active (Ai) and Inactive (Ii) populations
                 Ai_t += self.dt * (self.eta * P_off_t * Ii_t - Ci_t)
                 Ii_t += -self.dt * self.eta * P_off_t * Ii_t
 

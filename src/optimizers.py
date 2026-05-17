@@ -15,6 +15,14 @@ class DifferentialEvolutionOptimizer:
         self.tol = tol
         self.maxiter = maxiter
         self.result = None
+        self.curr_step = 0
+
+    def callback(self, xk, convergence):
+        self.curr_step += 1
+        # Calculate current fitness for the best individual in the step
+        # Note: Scipy doesn't pass fitness to callback, so we re-evaluate if needed 
+        # but for performance we just show the step and convergence state.
+        console.print(fr"DE Step [bold cyan]{self.curr_step}/{self.maxiter}[/bold cyan] - Convergence: [bold magenta]{convergence:.6f}[/bold magenta]")
 
     def optimize(self, *args):
         """
@@ -22,6 +30,7 @@ class DifferentialEvolutionOptimizer:
         args: Additional arguments for the objective function.
         """
         start_time = time.time()
+        self.curr_step = 0
         self.result = differential_evolution(
             self.objective_function,
             self.bounds,
@@ -29,8 +38,10 @@ class DifferentialEvolutionOptimizer:
             strategy=self.strategy,
             popsize=self.popsize,
             tol=self.tol,
-            disp=True,
-            maxiter=self.maxiter
+            disp=False, # We use our own callback for unified style
+            maxiter=self.maxiter,
+            callback=self.callback,
+            polish=True
         )
         elapsed_time = time.time() - start_time
         return self.result.x, self.result.fun, elapsed_time
