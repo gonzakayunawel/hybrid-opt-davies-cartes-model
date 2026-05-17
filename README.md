@@ -78,6 +78,12 @@ Each experiment creates a timestamped folder inside `results/` (e.g., `mission_2
 - `/data`: Managed environment for ingesting SOSAFE reports and Santiago's Metro (Subway) network accessibility data.
 - `config.json`: Search bounds for the four model parameters.
 
+## 🙏 Acknowledgements
+
+The original NumPy simulation of the Davies model was developed by **[Dr. Carlos Gabriel Cartes Moraga](https://orcid.org/0000-0001-6770-4983)** (Universidad San Sebastián, Chile), who served as thesis advisor for this project. His implementation served as the ground-truth reference for the PyTorch port, the hybrid optimization framework, and the numerical equivalence validation presented here.
+
+All work beyond the original NumPy baseline — including the PyTorch engine, the PSO/DE optimizers, the preprocessing pipeline, and the benchmarking infrastructure — was developed independently by the thesis author.
+
 ## 📄 Citation
 
 If you use this software in your research, please cite it as:

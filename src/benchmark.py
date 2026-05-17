@@ -15,7 +15,11 @@ console = Console()
 
 def run_simulation_numpy(distances, Ii, Zj, beta_r, gamma_r, alpha_p, gamma_p, Nt=500, Ntt=10):
     """
-    Davies Model Simulation implemented with NumPy (Original logic).
+    Davies Model Simulation implemented with NumPy.
+
+    Original implementation by Dr. Carlos Gabriel Cartes Moraga
+    (Universidad San Sebastián, Chile) — https://orcid.org/0000-0001-6770-4983
+    Used here as the ground-truth reference for numerical equivalence validation.
     """
     nlat, nlon = 78, 71
     nz = 500
