@@ -150,7 +150,8 @@ def run_simulation_cupy(distances, Ii, Zj, beta_r, gamma_r, alpha_p, gamma_p, Nt
 
 def perform_benchmark(data_dir, params):
     """
-    Executes a performance benchmark comparing NumPy, CuPy, and PyTorch.
+    Executes a performance benchmark comparing NumPy, CuPy, and PyTorch,
+    including numerical equivalence validation.
     """
     from src.main import load_data
     
@@ -160,34 +161,52 @@ def perform_benchmark(data_dir, params):
     
     beta_r, gamma_r, alpha_p, gamma_p = params
     
-    # 1. NumPy Benchmark
-    console.print("Running [bold yellow]NumPy[/bold yellow] simulation...")
-    _, time_np = run_simulation_numpy(distances, Ii, targets, beta_r, gamma_r, alpha_p, gamma_p)
+    # 1. NumPy Benchmark (Ground Truth)
+    console.print("Running [bold yellow]NumPy (Ground Truth)[/bold yellow] simulation...")
+    Rj_np, time_np = run_simulation_numpy(distances, Ii, targets, beta_r, gamma_r, alpha_p, gamma_p)
     
     # 2. CuPy Benchmark
     console.print("Running [bold green]CuPy[/bold green] simulation...")
-    _, time_cp = run_simulation_cupy(distances, Ii, targets, beta_r, gamma_r, alpha_p, gamma_p)
+    Rj_cp, time_cp = run_simulation_cupy(distances, Ii, targets, beta_r, gamma_r, alpha_p, gamma_p)
     
     # 3. PyTorch Benchmark (CPU/GPU)
     console.print(fr"Running [bold cyan]PyTorch ({torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU'})[/bold cyan] simulation...")
     model = DaviesModel(distances, Ii, targets)
     start_pt = time.time()
-    model.run_simulation(beta_r, gamma_r, alpha_p, gamma_p)
+    Rj_pt = model.run_simulation(beta_r, gamma_r, alpha_p, gamma_p)
     time_pt = time.time() - start_pt
     
+    # Validation Logic
+    def get_errors(ground_truth, predicted):
+        if predicted is None:
+            return "N/A", "N/A"
+        max_err = np.max(np.abs(ground_truth - predicted))
+        rmse = np.sqrt(np.mean((ground_truth - predicted)**2))
+        return fr"{max_err:.2e}", fr"{rmse:.2e}"
+
+    cp_max, cp_rmse = get_errors(Rj_np, Rj_cp)
+    pt_max, pt_rmse = get_errors(Rj_np, Rj_pt)
+
     # Report
-    table = Table(title="[bold blue]Performance Benchmark (Single Run)[/bold blue]")
+    table = Table(title="[bold blue]Performance & Numerical Equivalence Benchmark[/bold blue]")
     table.add_column("Engine", style="cyan")
-    table.add_column("Time (seconds)", style="magenta")
-    table.add_column("Speedup vs NumPy", style="green")
+    table.add_column("Time (s)", style="magenta")
+    table.add_column("Speedup", style="green")
+    table.add_column("Max Error", style="red")
+    table.add_column("RMSE", style="red")
     
-    table.add_row("NumPy (CPU)", fr"{time_np:.4f}", "1.00x")
+    table.add_row("NumPy (CPU)", fr"{time_np:.4f}", "1.00x", "0.00e+00", "0.00e+00")
     
     if time_cp:
-        table.add_row("CuPy (GPU)", fr"{time_cp:.4f}", fr"{time_np/time_cp:.2f}x")
+        table.add_row("CuPy (GPU)", fr"{time_cp:.4f}", fr"{time_np/time_cp:.2f}x", cp_max, cp_rmse)
     else:
-        table.add_row("CuPy (GPU)", "N/A", "N/A (Cupy not installed)")
+        table.add_row("CuPy (GPU)", "N/A", "N/A", "N/A", "N/A")
         
-    table.add_row(fr"PyTorch ({'GPU' if torch.cuda.is_available() else 'CPU'})", fr"{time_pt:.4f}", fr"{time_np/time_pt:.2f}x")
+    table.add_row(fr"PyTorch ({'GPU' if torch.cuda.is_available() else 'CPU'})", fr"{time_pt:.4f}", fr"{time_np/time_pt:.2f}x", pt_max, pt_rmse)
     
     console.print(table)
+    
+    if pt_rmse != "N/A" and float(pt_rmse) < 1e-4:
+        console.print(fr"[bold green]\[Discovery][/bold green] Numerical equivalence [bold green]VALIDATED[/bold green] (Errors within tolerance).")
+    else:
+        console.print(fr"[bold red]\[Discovery][/bold red] Numerical equivalence [bold red]WARNING[/bold red] (Significant discrepancy detected).")
