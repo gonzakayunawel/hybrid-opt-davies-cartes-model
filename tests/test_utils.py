@@ -98,10 +98,11 @@ def test_print_metrics_output():
                 "rmse": 0.1, "mae": 0.1, "mape": 1.0, "smape": 1.0,
                 "r2": 0.9, "max_error": 0.2, "ks_stat": 0.05, "ks_p_value": 0.99
             }
-            with patch('builtins.print') as mock_print:
+            # FIXED: #4 — print_metrics uses console.print (rich), not builtins.print
+            with patch('src.utils.console') as mock_console:
                 print_metrics(predicted, real)
                 mock_calc.assert_called_once_with(predicted, real)
-                assert mock_print.call_count >= 8
+                mock_console.print.assert_called_once()
 
 def test_plot_results_calls():
     """

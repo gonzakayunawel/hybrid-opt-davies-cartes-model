@@ -93,7 +93,7 @@ class ParticleSwarmOptimizer:
                 fitnesses = fitnesses.unsqueeze(1)
 
             # Update personal bests
-            improved_mask = (fitnesses < personal_bests).squeeze()
+            improved_mask = (fitnesses < personal_bests).squeeze(dim=1)  # FIXED: #6 — dim=1 avoids 0-D collapse when n_particles=1
 
             if improved_mask.any():
                 personal_best_pos[improved_mask] = positions[improved_mask]

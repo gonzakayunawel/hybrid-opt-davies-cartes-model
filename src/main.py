@@ -26,7 +26,7 @@ def load_data(data_dir):
         distances = np.load(os.path.join(data_dir, "rij_500_no_network.npy"), allow_pickle=False)
         return origin, destination, targets, distances
     except FileNotFoundError as e:
-        print(f"Error loading data: {e}")
+        print(f"Error loading data: {e}", file=sys.stderr)  # FIXED: #8
         sys.exit(1)
 
 def objective_function(params, model, target_data, processing_method='linear'):
@@ -88,6 +88,8 @@ def objective_function(params, model, target_data, processing_method='linear'):
             beta_r, gamma_r, alpha_p, gamma_p = params
         elif isinstance(params, torch.Tensor):
              beta_r, gamma_r, alpha_p, gamma_p = params.tolist()
+        else:
+            raise TypeError(f"Unsupported params type: {type(params)}")  # FIXED: #3
 
         Rj = model.run_simulation(beta_r, gamma_r, alpha_p, gamma_p)
         processed_Rj = process_simulation_output(Rj, method=processing_method)

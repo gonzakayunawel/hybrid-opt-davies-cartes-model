@@ -39,7 +39,10 @@ def save_results(params, error, elapsed_time, seed, Rj_final, target_scaled, out
         "best_params": params if isinstance(params, list) else params.tolist(),
         "best_error": float(error),
         "elapsed_time_seconds": float(elapsed_time),
-        "metrics": calculate_errors(Rj_final, target_scaled)
+        "metrics": {  # FIXED: #5 — replace NaN with null for valid JSON output
+            k: (None if isinstance(v, float) and v != v else v)
+            for k, v in calculate_errors(Rj_final, target_scaled).items()
+        }
     }
 
     json_path = os.path.join(output_dir, "best_results.json")

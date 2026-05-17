@@ -3,7 +3,7 @@ import numpy as np
 
 class DaviesModel:
     def __init__(self, dij, Ii, Zj, device=None, Nt=500, Ntt=10):
-        self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = device if device is not None else torch.device("cuda" if torch.cuda.is_available() else "cpu")  # FIXED: #7
         self.dij = torch.from_numpy(dij).to(self.device).float()
         self.Ii = torch.from_numpy(Ii).to(self.device).float()
         self.Zj = torch.from_numpy(Zj).to(self.device).float()
@@ -107,17 +107,10 @@ class DaviesModel:
 
                 counter += 1
 
-                # Capture rate
-                fj_t = 1.0 - torch.exp(-torch.floor(Pj_t / (Rj_t + 1.0e-20)))
-                Ci_t = self.tau * torch.sum(Sij_t * fj_t, dim=2)
-                # fj_t is (500). Sij_t is (78, 71, 500).
-                # Sij_t * fj_t -> (78, 71, 500).
-                # sum(dim=2) -> (78, 71).
+                # FIXED: #1, #2 — removed dead first-sub-step Ci_t (overwritten below) and
+                # dead P_off_t (also overwritten below); Block 1 is the predictor only.
 
-                # Time step for Ai and Ii
-                P_off_t = rho_t * Wi_t / (1.0 + Wi_t)
-
-                # Initial fj_t (Attractiveness):
+                # Second sub-step: recompute attractiveness with updated police allocation
                 fj_attr = torch.exp(-torch.floor(gamma_r * Pj_t / (Rj_t + 1.0e-20)))
 
                 Wij_t = fj_attr * dij_t
