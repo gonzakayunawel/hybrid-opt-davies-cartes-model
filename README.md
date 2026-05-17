@@ -11,7 +11,7 @@ This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**
 - **Hybrid Optimization Pipeline**:
   - Global Search: Comparison between a custom **Particle Swarm Optimization (PSO)** implemented in PyTorch and **Differential Evolution (DE)** (SciPy). **DE was selected as the superior approach** for identifying the optimal global parameter regions.
   - **Local Refinement**: **L-BFGS-B** (SciPy) algorithm used for high-precision convergence once the heuristic phase identifies a promising region.
-- **Signal Processing & Preprocessing**: Data cleaning pipeline utilizing LOWESS Regression and cubic interpolation to generate differentiable and physically realistic target curves from noisy SOSAFE data.
+- **Signal Processing & Preprocessing**: Data cleaning pipeline utilizing LOWESS Regression and linear interpolation to generate differentiable and physically realistic target curves from noisy SOSAFE data.
 - **Statistical Validation**: Goodness-of-fit evaluation through **Kolmogorov-Smirnov (K-S) tests**, **MAE**, and **RMSE** metrics.
 
 ## 🚀 Getting Started
@@ -45,6 +45,7 @@ python src/main.py --benchmark
 
 ### 4. Understanding the Controls
 - `--optimizer`: Choose `de` (recommended for robust global search) or `pso`.
+- `--method`: Signal processing method — `linear` (default, fast) or `lowess` (smoother, slower).
 - `--max_iter`: How many generations the algorithm will run (higher = better convergence).
 - `--seed`: Ensures you get the same results every time—essential for scientific auditability!
 - `--save`: Automatically exports your results to the `results/` folder, creating a unique subfolder with a timestamp for every mission.
@@ -55,7 +56,7 @@ The search space for parameters (`beta_r`, `gamma_r`, `alpha_p`, `gamma_p`) is m
 
 ### 6. Exploring the Output
 Each experiment creates a timestamped folder inside `results/` (e.g., `mission_20260516_183005/`) containing:
-- `[optimizer]_best_results.json`: A detailed summary of the best parameters found, search bounds, and statistical metrics.
+- `[optimizer]_best_results.json`: Full mission report including mission ID, timestamp, hardware profile (OS, CPU, RAM, GPU), optimizer, seed, search bounds, best parameters found, and statistical metrics.
 - `[optimizer]_Rj_final.npy`: The raw simulation output (normalized attack density) for further analysis.
 - `[optimizer]_ranked_activity.png`: Comparison of real vs predicted intensity ranked by site.
 - `[optimizer]_density_distribution.png`: Histogram comparison of attack densities.
@@ -64,14 +65,16 @@ Each experiment creates a timestamped folder inside `results/` (e.g., `mission_2
 - `[optimizer]_spatial_heatmap.png`: High-resolution side-by-side geographic comparison.
 
 ## 📂 Repository Structure
-- `/notebooks:` Development history, including the transition from NumPy/TensorFlow experiments to the production-ready PyTorch architecture.
-- `/src:` Modularized Python scripts including engine.py (differential equations), optimizer.py (Custom PSO class), and preprocessing.py.
-- `/data:` Managed environment for ingesting SOSAFE reports and Santiago's Metro (Subway) network accessibility data.
-
-## 🚀 Future Business Application (2026)
-This framework is designed to be highly modular, serving as a template for **Industrial Data Analytics Consulting**. The core optimization engine can be adapted for logistics, inventory forecasting, and urban mobility challenges.
-essing.py.
-- `/data:` Managed environment for ingesting SOSAFE reports and Santiago's Metro (Subway) network accessibility data.
+- `/notebooks`: Development history, including the transition from NumPy/TensorFlow experiments to the production-ready PyTorch architecture.
+- `/src`: Modularized Python scripts:
+  - `engine.py`: Davies model differential equations (PyTorch).
+  - `optimizers.py`: Custom PSO and Differential Evolution wrappers.
+  - `preprocessing.py`: Signal processing pipeline (peak detection, interpolation, LOWESS).
+  - `utils.py`: Metrics, plotting, hardware diagnostics, and result persistence.
+  - `benchmark.py`: Performance and numerical equivalence benchmark (NumPy vs CuPy vs PyTorch).
+  - `main.py`: CLI entry point.
+- `/data`: Managed environment for ingesting SOSAFE reports and Santiago's Metro (Subway) network accessibility data.
+- `config.json`: Search bounds for the four model parameters.
 
 ## 🚀 Future Business Application (2026)
 This framework is designed to be highly modular, serving as a template for **Industrial Data Analytics Consulting**. The core optimization engine can be adapted for logistics, inventory forecasting, and urban mobility challenges.
