@@ -79,6 +79,7 @@ def save_results(params, error: float, elapsed_time: float, seed: int, Rj_final:
     results_data = {
         "mission_id": mission_id,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "hardware": get_system_info(),
         "optimizer": optimizer_name,
         "seed": seed,
         "bounds": bounds,
