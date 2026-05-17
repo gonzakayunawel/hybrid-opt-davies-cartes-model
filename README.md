@@ -1,5 +1,7 @@
 # Hybrid Optimization Framework for Social Dynamics Modeling
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20262195.svg)](https://doi.org/10.5281/zenodo.20262195)
+
 ## 🎯 Project Overview
 This repository contains the technical implementation and research for my Master's thesis: **`Parametric Calibration of a Mathematical Model of the 2019 Chilean Social Unrest using a Hybrid Optimization Approach.`** The project addresses the challenges of calibrating discrete-time differential equations in systems with high numerical instability and complex spatial interactions.
 
@@ -75,6 +77,23 @@ Each experiment creates a timestamped folder inside `results/` (e.g., `mission_2
   - `main.py`: CLI entry point.
 - `/data`: Managed environment for ingesting SOSAFE reports and Santiago's Metro (Subway) network accessibility data.
 - `config.json`: Search bounds for the four model parameters.
+
+## 📄 Citation
+
+If you use this software in your research, please cite it as:
+
+```bibtex
+@software{cayunao_erices_2026_hybrid_opt,
+  author       = {Gonzalo Cayunao-Erices},
+  title        = {{Technical implementation: Parametric Calibration of the 2019 Chilean Social Unrest}},
+  month        = may,
+  year         = 2026,
+  publisher    = {Zenodo},
+  version      = {v1.0.0},
+  doi          = {10.5281/zenodo.20262195},
+  url          = {https://doi.org/10.5281/zenodo.20262195}
+}
+```
 
 ## 🚀 Future Business Application (2026)
 This framework is designed to be highly modular, serving as a template for **Industrial Data Analytics Consulting**. The core optimization engine can be adapted for logistics, inventory forecasting, and urban mobility challenges.
