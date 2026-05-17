@@ -1,0 +1,35 @@
+# Python temporary files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment
+.venv/
+env/
+venv/
+ENV/
+
+# Optimization Results & Telemetry
+results/
+repair_test/
+test_de/
+final_test_de/
+final_test_pso/
+test_results_1/
+test_results_2/
+
+# Data
+data/*.dat
+data/*.npy
+!data/origin_dens_500m_5am10am.dat
+!data/destination_dens_500m_5am10am.dat
+!data/targets_500.dat
+!data/rij_500_no_network.npy
+!data/data_sosafe.dat
+
+# Agent Logs
+# AGENTS.md (Permitido)
+
+# OS files
+.DS_Store
+Thumbs.db
