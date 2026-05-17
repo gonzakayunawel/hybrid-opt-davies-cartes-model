@@ -1,7 +1,56 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
+import random
+import json
+import os
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from scipy.stats import ks_2samp
+from rich.console import Console
+from rich.table import Table
+
+console = Console()
+
+def set_seed(seed: int):
+    """
+    Sets seeds for reproducibility.
+    """
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+    console.print(fr"[bold blue]\[Discovery][/bold blue] Seed set to: [bold cyan]{seed}[/bold cyan]")
+
+def save_results(params, error, elapsed_time, seed, Rj_final, target_scaled, output_dir, optimizer_name):
+    """
+    Saves optimization results and metrics to a JSON file and final simulation to NPY.
+    """
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        console.print(fr"[bold blue]\[Discovery][/bold blue] Created output directory: [italic]{output_dir}[/italic]")
+
+    # Save metrics and params to JSON
+    results_data = {
+        "optimizer": optimizer_name,
+        "seed": seed,
+        "best_params": params if isinstance(params, list) else params.tolist(),
+        "best_error": float(error),
+        "elapsed_time_seconds": float(elapsed_time),
+        "metrics": calculate_errors(Rj_final, target_scaled)
+    }
+
+    json_path = os.path.join(output_dir, "best_results.json")
+    with open(json_path, "w") as f:
+        json.dump(results_data, f, indent=4)
+    
+    # Save final simulation Rj
+    npy_path = os.path.join(output_dir, "Rj_final.npy")
+    np.save(npy_path, Rj_final)
+
+    console.print(fr"[bold blue]\[Discovery][/bold blue] Results saved to: [bold green]{output_dir}[/bold green]")
 
 def calculate_errors(predicted, real):
     """
@@ -44,20 +93,26 @@ def calculate_errors(predicted, real):
 
 def print_metrics(predicted, real):
     """
-    Prints detailed error metrics.
+    Prints detailed error metrics using a rich Table.
     """
     metrics = calculate_errors(predicted, real)
 
-    print("Error Metrics:")
-    print(f"RMSE: {metrics['rmse']:.4f}")
-    print(f"MAE: {metrics['mae']:.4f}")
-    print(f"MAPE: {metrics['mape']:.2f}%")
-    print(f"SMAPE: {metrics['smape']:.2f}%")
-    print(f"R² Score: {metrics['r2']:.4f}")
-    print(f"Max Error: {metrics['max_error']:.4f}")
-    print(f"KS Stat: {metrics['ks_stat']:.4f}, p-value: {metrics['ks_p_value']:.4f}")
+    table = Table(title="[bold blue]Error Metrics[/bold blue]")
+    table.add_column("Metric", style="cyan")
+    table.add_column("Value", style="magenta")
 
-def plot_results(real, predicted, title="Comparison"):
+    table.add_row("RMSE", f"{metrics['rmse']:.4f}")
+    table.add_row("MAE", f"{metrics['mae']:.4f}")
+    table.add_row("MAPE", f"{metrics['mape']:.2f}%")
+    table.add_row("SMAPE", f"{metrics['smape']:.2f}%")
+    table.add_row("R² Score", f"{metrics['r2']:.4f}")
+    table.add_row("Max Error", f"{metrics['max_error']:.4f}")
+    table.add_row("KS Stat", f"{metrics['ks_stat']:.4f}")
+    table.add_row("KS p-value", f"{metrics['ks_p_value']:.4f}")
+
+    console.print(table)
+
+def plot_results(real, predicted, title="Comparison", output_path=None):
     """
     Plots the real vs predicted values.
     """
@@ -79,4 +134,9 @@ def plot_results(real, predicted, title="Comparison"):
     ax2.grid(True, linestyle='--', alpha=0.5)
 
     plt.tight_layout()
+    
+    if output_path:
+        plt.savefig(output_path)
+        console.print(fr"[bold blue]\[Discovery][/bold blue] Plot saved to: [bold green]{output_path}[/bold green]")
+    
     plt.show()

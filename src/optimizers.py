@@ -1,6 +1,10 @@
 import numpy as np
 import torch
+import time
 from scipy.optimize import differential_evolution
+from rich.console import Console
+
+console = Console()
 
 class DifferentialEvolutionOptimizer:
     def __init__(self, objective_function, bounds, strategy='best1bin', popsize=10, tol=1e-6, maxiter=10):
@@ -17,6 +21,7 @@ class DifferentialEvolutionOptimizer:
         Runs the optimization.
         args: Additional arguments for the objective function.
         """
+        start_time = time.time()
         self.result = differential_evolution(
             self.objective_function,
             self.bounds,
@@ -27,7 +32,8 @@ class DifferentialEvolutionOptimizer:
             disp=True,
             maxiter=self.maxiter
         )
-        return self.result.x, self.result.fun
+        elapsed_time = time.time() - start_time
+        return self.result.x, self.result.fun, elapsed_time
 
 class ParticleSwarmOptimizer:
     def __init__(self, objective_function, bounds, n_particles=10, max_iter=10, w_range=(0.5, 0.5), c1=1.5, c2=1.5, device=None, tol=1e-6, patience=10):
@@ -45,7 +51,7 @@ class ParticleSwarmOptimizer:
         self.best_fitness = float('inf')
 
     def optimize(self): # Note: args must be handled by objective_function being a partial or wrapper
-
+        start_time = time.time()
         # Initialize particles
         dim = self.bounds.shape[0]
         min_bounds = self.bounds[:, 0].to(self.device)
@@ -70,6 +76,7 @@ class ParticleSwarmOptimizer:
         last_best_val = global_best_val.item()
 
         for curr_iter in range(self.max_iter):
+            iter_start = time.time()
             # Update w
             w = self.w_range[0] - (self.w_range[0] - self.w_range[1]) * (curr_iter / self.max_iter)
 
@@ -86,14 +93,8 @@ class ParticleSwarmOptimizer:
                 fitnesses = fitnesses.unsqueeze(1)
 
             # Update personal bests
-            # We need to compare with current personal_bests
             improved_mask = (fitnesses < personal_bests).squeeze()
 
-            # Update positions where improved
-            # personal_best_pos[improved_mask] = positions[improved_mask]
-            # Note: improved_mask might be 1D, positions is 2D.
-            # If improved_mask is (10,), positions is (10, 4).
-            # This works in PyTorch.
             if improved_mask.any():
                 personal_best_pos[improved_mask] = positions[improved_mask]
                 personal_bests[improved_mask] = fitnesses[improved_mask]
@@ -104,7 +105,8 @@ class ParticleSwarmOptimizer:
                 global_best_val = current_best_val
                 global_best_pos = personal_best_pos[current_best_idx[0]].clone()
 
-            # print(f"PSO - Iteration: {curr_iter+1}/{self.max_iter}, Error: {global_best_val.item():.6f}")
+            iter_time = time.time() - iter_start
+            console.print(f"PSO Iter [bold cyan]{curr_iter+1}/{self.max_iter}[/bold cyan] - Error: [bold magenta]{global_best_val.item():.6f}[/bold magenta] - Time: [bold yellow]{iter_time:.2f}s[/bold yellow]")
 
             # Patience check
             if (last_best_val - global_best_val.item()) < self.tol:
@@ -115,10 +117,11 @@ class ParticleSwarmOptimizer:
             last_best_val = global_best_val.item()
 
             if patience_counter >= self.patience:
-                print(f"Convergence reached at iteration {curr_iter + 1}.")
+                console.print(f"[bold green]Convergence reached at iteration {curr_iter + 1}.[/bold green]")
                 break
 
         self.best_position = global_best_pos
         self.best_fitness = global_best_val.item()
+        elapsed_time = time.time() - start_time
 
-        return self.best_position.cpu().numpy(), self.best_fitness
+        return self.best_position.cpu().numpy(), self.best_fitness, elapsed_time

@@ -9,8 +9,11 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.engine import DaviesModel
 from src.preprocessing import scale_data, process_simulation_output
-from src.utils import calculate_errors, print_metrics, plot_results
+from src.utils import calculate_errors, print_metrics, plot_results, set_seed, save_results
 from src.optimizers import DifferentialEvolutionOptimizer, ParticleSwarmOptimizer
+from rich.console import Console
+
+console = Console()
 
 def load_data(data_dir):
     """
@@ -102,6 +105,9 @@ def main():
     parser.add_argument("--pop_size", type=int, default=10, help="Population size")
     parser.add_argument("--Nt", type=int, default=500, help="Simulation steps Nt")
     parser.add_argument("--Ntt", type=int, default=10, help="Simulation steps Ntt")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
+    parser.add_argument("--output_dir", type=str, default="results", help="Directory to save results")
+    parser.add_argument("--save", action="store_true", help="Save results to disk")
 
     args = parser.parse_args()
 
@@ -133,10 +139,14 @@ def main():
         [0.01, 0.05]
     ])
 
-    print(f"Starting optimization with {args.optimizer.upper()}...")
+    # Reproducibility
+    set_seed(args.seed)
+
+    console.print(f"Starting optimization with [bold cyan]{args.optimizer.upper()}[/bold cyan]...")
 
     best_params = None
     best_error = float('inf')
+    elapsed_time = 0.0
 
     if args.optimizer == "de":
         optimizer = DifferentialEvolutionOptimizer(
@@ -146,7 +156,7 @@ def main():
             popsize=args.pop_size
         )
         # Pass model and target_data as args
-        best_params, best_error = optimizer.optimize(model, target_scaled, args.method)
+        best_params, best_error, elapsed_time = optimizer.optimize(model, target_scaled, args.method)
 
     elif args.optimizer == "pso":
         # Wrap objective function for PSO
@@ -159,14 +169,15 @@ def main():
             max_iter=args.max_iter,
             n_particles=args.pop_size
         )
-        best_params, best_error = optimizer.optimize()
+        best_params, best_error, elapsed_time = optimizer.optimize()
 
-    print("\nOptimization Results:")
-    print(f"Best Parameters: {best_params}")
-    print(f"Best Error: {best_error}")
+    console.print("\n[bold green]Optimization Completed![/bold green]")
+    console.print(f"Best Parameters: [bold yellow]{best_params}[/bold yellow]")
+    console.print(f"Best Error: [bold magenta]{best_error:.6f}[/bold magenta]")
+    console.print(f"Total Time: [bold yellow]{elapsed_time:.2f}s[/bold yellow]")
 
     # Final Run
-    print("\nRunning final simulation with best parameters...")
+    console.print("\nRunning final simulation with best parameters...")
     if isinstance(best_params, np.ndarray):
         best_params = best_params.tolist()
 
@@ -176,8 +187,21 @@ def main():
 
     print_metrics(scaled_Rj, target_scaled)
 
+    if args.save:
+        save_results(
+            best_params, 
+            best_error, 
+            elapsed_time, 
+            args.seed, 
+            scaled_Rj, 
+            target_scaled, 
+            args.output_dir, 
+            args.optimizer
+        )
+
     if args.plot:
-        plot_results(target_scaled, scaled_Rj, title=f"Optimization Result ({args.optimizer.upper()})")
+        plot_path = os.path.join(args.output_dir, "comparison_plot.png") if args.save else None
+        plot_results(target_scaled, scaled_Rj, title=f"Optimization Result ({args.optimizer.upper()})", output_path=plot_path)
 
 if __name__ == "__main__":
     main()

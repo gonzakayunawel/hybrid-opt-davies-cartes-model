@@ -23,16 +23,16 @@ uv pip install -r requirements.txt
 ```
 
 ### Execution Protocols
-El punto de entrada principal es `src/main.py`.
+El punto de entrada principal es `src/main.py`. El sistema utiliza `rich` para reportes estructurados en consola.
 
 **1. Calibración con Differential Evolution (DE):**
 ```bash
-python src/main.py --optimizer de --max_iter 50 --pop_size 15 --plot
+python src/main.py --optimizer de --max_iter 50 --pop_size 15 --seed 42 --save --plot
 ```
 
 **2. Calibración con Particle Swarm Optimization (PSO):**
 ```bash
-python src/main.py --optimizer pso --max_iter 100 --pop_size 20 --plot
+python src/main.py --optimizer pso --max_iter 100 --pop_size 20 --seed 42 --save --plot
 ```
 
 **3. Linting con Ruff:**
@@ -44,6 +44,9 @@ ruff check src/
 - `--data_dir`: Ruta a los archivos `.dat` y `.npy` (default: `data`).
 - `--method`: Método de suavizado (`linear` o `lowess`).
 - `--Nt` / `--Ntt`: Parámetros de pasos de tiempo de la simulación.
+- `--seed`: Semilla aleatoria para reproducibilidad (default: 42).
+- `--save`: Flag para persistir resultados en disco (JSON y NPY).
+- `--output_dir`: Directorio para guardar resultados (default: `results`).
 
 ---
 
