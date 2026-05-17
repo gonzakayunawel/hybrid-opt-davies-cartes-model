@@ -60,7 +60,7 @@ def set_seed(seed: int):
         torch.backends.cudnn.benchmark = False
     console.print(r"[bold blue]\[Discovery][/bold blue] Seed set to: [bold cyan]" + str(seed) + r"[/bold cyan]")
 
-def save_results(params, error, elapsed_time, seed, Rj_final, target_scaled, output_dir, optimizer_name, bounds, mission_id):
+def save_results(params, error: float, elapsed_time: float, seed: int, Rj_final: np.ndarray, target_scaled: np.ndarray, output_dir: str, optimizer_name: str, bounds: dict, mission_id: str):
     """
     Saves optimization results and metrics to a JSON file and final simulation to NPY.
     """
@@ -82,7 +82,7 @@ def save_results(params, error, elapsed_time, seed, Rj_final, target_scaled, out
         "optimizer": optimizer_name,
         "seed": seed,
         "bounds": bounds,
-        "best_params": params if isinstance(params, list) else params.tolist(),
+        "best_params": np.asarray(params).tolist(),
         "best_error": float(error),
         "elapsed_time_seconds": float(elapsed_time),
         "metrics": clean_metrics

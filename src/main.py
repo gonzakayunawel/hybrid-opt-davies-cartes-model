@@ -19,7 +19,10 @@ from scipy.optimize import minimize
 
 console = Console()
 
-def load_config(config_path):
+# Global Constants for Scientific Auditability
+BENCHMARK_BASELINE_PARAMS = [0.1, 0.19, 0.97, 0.034]
+
+def load_config(config_path: str) -> dict:
     """
     Loads configuration from a JSON file.
     """
@@ -37,7 +40,7 @@ def load_config(config_path):
             }
         }
 
-def load_data(data_dir):
+def load_data(data_dir: str):
     """
     Loads data from the data directory.
     """
@@ -47,8 +50,11 @@ def load_data(data_dir):
         targets = np.loadtxt(os.path.join(data_dir, "targets_500.dat"))
         distances = np.load(os.path.join(data_dir, "rij_500_no_network.npy"))
         return origin, destination, targets, distances
+    except FileNotFoundError as e:
+        console.print(r"[bold red]\[Error][/bold red] Data file not found: " + str(e))
+        sys.exit(1)
     except Exception as e:
-        console.print(r"[bold red]\[Error][/bold red] Loading data: " + str(e))
+        console.print(r"[bold red]\[Error][/bold red] Unexpected error loading data: " + str(e))
         sys.exit(1)
 
 def objective_function(params, model, target_data, processing_method="linear"):
@@ -142,9 +148,7 @@ def main():
 
     if args.benchmark:
         from src.benchmark import perform_benchmark
-        # Use baseline params for benchmark
-        baseline_params = [0.1, 0.19, 0.97, 0.034] 
-        perform_benchmark(args.data_dir, baseline_params)
+        perform_benchmark(args.data_dir, BENCHMARK_BASELINE_PARAMS)
         console.print(r"[bold blue]\[Discovery][/bold blue] Benchmark mission completed.")
         return
 
