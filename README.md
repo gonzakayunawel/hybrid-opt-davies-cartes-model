@@ -14,6 +14,43 @@ This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**
 - **Signal Processing & Preprocessing**: Data cleaning pipeline utilizing LOWESS Regression and cubic interpolation to generate differentiable and physically realistic target curves from noisy SOSAFE data.
 - **Statistical Validation**: Goodness-of-fit evaluation through **Kolmogorov-Smirnov (K-S) tests**, **MAE**, and **RMSE** metrics.
 
+## 🚀 Getting Started
+
+Welcome! Whether you are a researcher, a student, or just curious about social dynamics modeling, this guide will help you get the simulation running in no time.
+
+### 1. Prerequisites
+We use **[uv](https://github.com/astral-sh/uv)** for lightning-fast Python package management. If you don't have it yet, you can install it via their official site, or just use standard `pip`.
+
+### 2. Setting Up the Environment
+Clone the repository and prepare your virtual environment:
+```bash
+# Create a virtual environment and install dependencies
+uv venv
+source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
+uv pip install -r requirements.txt
+```
+
+### 3. Running Your First Calibration
+The main entry point is `src/main.py`. You can choose between two optimization algorithms: **Differential Evolution (DE)** or **Particle Swarm Optimization (PSO)**.
+
+**Try a quick run with PSO to see it in action:**
+```bash
+python src/main.py --optimizer pso --max_iter 10 --pop_size 5 --seed 42 --save --plot
+```
+
+### 4. Understanding the Controls
+- `--optimizer`: Choose `de` (recommended for robust global search) or `pso`.
+- `--max_iter`: How many generations the algorithm will run (higher = better convergence).
+- `--seed`: Ensures you get the same results every time—essential for scientific auditability!
+- `--save`: Automatically exports your results (JSON metrics and NPY vectors) to the `results/` folder.
+- `--plot`: Generates a visual comparison between the model and the real-world SOSAFE data.
+
+### 5. Exploring the Output
+Once the mission is complete, check the `results/` directory for:
+- `best_results.json`: A detailed summary of the best parameters found and statistical metrics.
+- `Rj_final.npy`: The raw simulation output for further analysis.
+- `comparison_plot.png`: A high-resolution chart showing the model's calibration performance.
+
 ## 📂 Repository Structure
 - `/notebooks:` Development history, including the transition from NumPy/TensorFlow experiments to the production-ready PyTorch architecture.
 - `/src:` Modularized Python scripts including engine.py (differential equations), optimizer.py (Custom PSO class), and preprocessing.py.
