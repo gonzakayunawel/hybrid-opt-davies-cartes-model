@@ -42,27 +42,18 @@ python src/main.py --optimizer pso --max_iter 10 --pop_size 5 --seed 42 --save -
 - `--optimizer`: Choose `de` (recommended for robust global search) or `pso`.
 - `--max_iter`: How many generations the algorithm will run (higher = better convergence).
 - `--seed`: Ensures you get the same results every time—essential for scientific auditability!
-- `--save`: Automatically exports your results (JSON metrics and NPY vectors) to the `results/` folder.
-- `--plot`: Generates a visual comparison between the model and the real-world SOSAFE data.
+- `--save`: Automatically exports your results to the `results/` folder, creating a unique subfolder with a timestamp for every mission.
+- `--plot`: Generates diagnostic plots and spatial intensity maps.
 
 ### 5. Configuring Search Bounds
-The search space for parameters (`beta_r`, `gamma_r`, `alpha_p`, `gamma_p`) is managed via the `config.json` file in the root directory. You can adjust these ranges to explore different regions of the parameter space:
-```json
-{
-    "bounds": {
-        "beta_r": [0.05, 0.15],
-        "gamma_r": [0.15, 0.25],
-        "alpha_p": [0.05, 1.5],
-        "gamma_p": [0.01, 0.05]
-    }
-}
-```
+The search space for parameters (`beta_r`, `gamma_r`, `alpha_p`, `gamma_p`) is managed via the `config.json` file. You can adjust these ranges to explore different regions of the parameter space.
 
 ### 6. Exploring the Output
-Once the mission is complete, check the `results/` directory for:
-- `best_results.json`: A detailed summary of the best parameters found and statistical metrics.
-- `Rj_final.npy`: The raw simulation output for further analysis.
-- `comparison_plot.png`: A high-resolution chart showing the model's calibration performance.
+Each experiment creates a timestamped folder inside `results/` (e.g., `mission_20260516_183005/`) containing:
+- `best_results.json`: A detailed summary of the best parameters found, search bounds, and statistical metrics.
+- `Rj_final.npy`: The raw simulation output (normalized attack density) for further analysis.
+- `diagnostic_plots.png`: A 2x2 panel showing Ranked Hotspots, Distributions, ECDF, and Residuals.
+- `spatial_heatmap.png`: High-resolution side-by-side geographic comparison (Simulated vs Real SOSAFE data).
 
 ## 📂 Repository Structure
 - `/notebooks:` Development history, including the transition from NumPy/TensorFlow experiments to the production-ready PyTorch architecture.
