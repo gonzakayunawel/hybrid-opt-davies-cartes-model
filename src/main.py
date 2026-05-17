@@ -3,18 +3,19 @@ import numpy as np
 import torch
 import os
 import sys
+import json
+import time
+from datetime import datetime
 
 # Ensure src is in path if running directly
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.engine import DaviesModel
 from src.preprocessing import scale_data, process_simulation_output
-from src.utils import calculate_errors, print_metrics, plot_results, set_seed, save_results
+from src.utils import calculate_errors, print_metrics, plot_results, set_seed, save_results, plot_heatmaps
 from src.optimizers import DifferentialEvolutionOptimizer, ParticleSwarmOptimizer
 from rich.console import Console
 from scipy.optimize import minimize
-import json
-import time
 
 console = Console()
 
@@ -44,59 +45,24 @@ def load_data(data_dir):
         origin = np.loadtxt(os.path.join(data_dir, "origin_dens_500m_5am10am.dat"))
         destination = np.loadtxt(os.path.join(data_dir, "destination_dens_500m_5am10am.dat"))
         targets = np.loadtxt(os.path.join(data_dir, "targets_500.dat"))
-        distances = np.load(os.path.join(data_dir, "rij_500_no_network.npy"), allow_pickle=False)
+        distances = np.load(os.path.join(data_dir, "rij_500_no_network.npy"))
         return origin, destination, targets, distances
-    except FileNotFoundError as e:
-        print(f"Error loading data: {e}", file=sys.stderr)  # FIXED: #8
+    except Exception as e:
+        print(f"Error loading data: {e}")
         sys.exit(1)
 
-def objective_function(params, model, target_data, processing_method='linear'):
+def objective_function(params, model, target_data, processing_method="linear"):
     """
-    Objective function for optimization.
+    Objective function to minimize (L2 norm of difference).
     """
-    # Params: beta_r, gamma_r, alpha_p, gamma_p
-    # Check if params is a batch (for PSO)
-    if isinstance(params, torch.Tensor) and params.dim() > 1:
-        # Batch processing
+    if params.ndim == 2:
+        # Batch processing for PSO
         errors = []
         for p in params:
             beta_r, gamma_r, alpha_p, gamma_p = p.tolist()
-            # Run simulation
             Rj = model.run_simulation(beta_r, gamma_r, alpha_p, gamma_p)
-            # Process output
-            # Note: Rj is raw output. Target data is likely scaled.
-            # We need to scale Rj before comparison?
-            # In DE notebook: Rj is scaled then smoothed then compared.
-            # In PyTorch notebook: Rj is interpolated then scaled.
-
-            # Let's assume we scale Rj to compare with scaled target.
-
-            # Process (interpolate/smooth)
-            # Rj_processed = process_simulation_output(Rj, method=processing_method)
-
-            # Scale
-            # scaled_Rj, _ = scale_data(Rj_processed)
-
-            # Wait, scale_data uses MinMaxScaler which fits on data.
-            # If we fit on predicted data, we lose absolute magnitude info if target was scaled globally?
-            # In notebook:
-            # scaler = MinMaxScaler()
-            # Rj_scaled = scaler.fit_transform(Rj_t.reshape(-1, 1)).flatten()
-            # This fits scaler on current Rj_t.
-            # This means we are comparing SHAPES, not amplitudes?
-            # Yes, "Comparison of Riot Targets".
-
-            # So we scale each run independently?
-            # Yes, that seems to be the logic in notebooks.
-
-            # Implement processing chain
             processed_Rj = process_simulation_output(Rj, method=processing_method)
             scaled_Rj, _ = scale_data(processed_Rj)
-
-            # Calculate error
-            # We use RMSE or similar as objective?
-            # Notebook uses np.linalg.norm(simulation_results - target_results)
-            # which is Euclidean distance (L2 norm).
             error = np.linalg.norm(scaled_Rj - target_data)
             errors.append(error)
 
@@ -110,7 +76,7 @@ def objective_function(params, model, target_data, processing_method='linear'):
         elif isinstance(params, torch.Tensor):
              beta_r, gamma_r, alpha_p, gamma_p = params.tolist()
         else:
-            raise TypeError(f"Unsupported params type: {type(params)}")  # FIXED: #3
+            raise TypeError(f"Unsupported params type: {type(params)}")
 
         Rj = model.run_simulation(beta_r, gamma_r, alpha_p, gamma_p)
         processed_Rj = process_simulation_output(Rj, method=processing_method)
@@ -129,22 +95,21 @@ def main():
     parser.add_argument("--Nt", type=int, default=500, help="Simulation steps Nt")
     parser.add_argument("--Ntt", type=int, default=10, help="Simulation steps Ntt")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
-    parser.add_argument("--output_dir", type=str, default="results", help="Directory to save results")
+    parser.add_argument("--output_dir", type=str, default="results", help="Base directory to save results")
     parser.add_argument("--save", action="store_true", help="Save results to disk")
 
     args = parser.parse_args()
 
     # Load data
-    print("Loading data...")
+    console.print("Loading data...")
     origin, destination, targets, distances = load_data(args.data_dir)
     Ii = origin + destination
 
     # Initialize model
-    print("Initializing model...")
+    console.print("Initializing model...")
     model = DaviesModel(distances, Ii, targets, Nt=args.Nt, Ntt=args.Ntt)
 
     # Prepare target data (Scaled Zj)
-    # Target is Zj[:, 2]
     target_raw = targets[:, 2]
     target_scaled, _ = scale_data(target_raw)
 
@@ -171,7 +136,12 @@ def main():
     # Reproducibility
     set_seed(args.seed)
 
-    console.print(f"Starting optimization with [bold cyan]{args.optimizer.upper()}[/bold cyan]...")
+    # Mission Identifier and Directory Setup
+    mission_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    mission_dir = os.path.join(args.output_dir, f"mission_{mission_id}") if args.save else None
+
+    console.print(fr"Mission ID: [bold cyan]{mission_id}[/bold cyan]")
+    console.print(fr"Starting optimization with [bold cyan]{args.optimizer.upper()}[/bold cyan]...")
 
     best_params = None
     best_error = float('inf')
@@ -184,11 +154,9 @@ def main():
             maxiter=args.max_iter,
             popsize=args.pop_size
         )
-        # Pass model and target_data as args
         best_params, best_error, elapsed_time = optimizer.optimize(model, target_scaled, args.method)
 
     elif args.optimizer == "pso":
-        # Wrap objective function for PSO
         def pso_objective(params):
             return objective_function(params, model, target_scaled, args.method)
 
@@ -200,7 +168,7 @@ def main():
         )
         best_params, best_error, pso_time = optimizer.optimize()
         
-        # HIBRID REFINEMENT: L-BFGS-B polishing for PSO
+        # HYBRID REFINEMENT: L-BFGS-B polishing for PSO
         console.print("Polishing PSO solution with [bold yellow]L-BFGS-B[/bold yellow]...")
         polish_start = time.time()
         res = minimize(
@@ -238,14 +206,18 @@ def main():
             args.seed, 
             scaled_Rj, 
             target_scaled, 
-            args.output_dir, 
+            mission_dir, 
             args.optimizer,
-            config["bounds"]
+            config["bounds"],
+            mission_id
         )
 
     if args.plot:
-        plot_path = os.path.join(args.output_dir, "comparison_plot.png") if args.save else None
-        plot_results(target_scaled, scaled_Rj, title=f"Optimization Result ({args.optimizer.upper()})", output_path=plot_path)
+        diag_path = os.path.join(mission_dir, "diagnostic_plots.png") if args.save else None
+        heat_path = os.path.join(mission_dir, "spatial_heatmap.png") if args.save else None
+        
+        plot_results(target_scaled, scaled_Rj, title=fr"Optimization Result ({args.optimizer.upper()})", output_path=diag_path)
+        plot_heatmaps(target_scaled, scaled_Rj, targets, title=fr"Spatial Intensity Map ({args.optimizer.upper()})", output_path=heat_path)
 
 if __name__ == "__main__":
     main()

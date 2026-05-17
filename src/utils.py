@@ -4,8 +4,11 @@ import torch
 import random
 import json
 import os
+from datetime import datetime
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from scipy.stats import ks_2samp
+from scipy.interpolate import RegularGridInterpolator
+from scipy.ndimage import gaussian_filter
 from rich.console import Console
 from rich.table import Table
 
@@ -24,13 +27,13 @@ def set_seed(seed: int):
         torch.backends.cudnn.benchmark = False
     console.print(fr"[bold blue]\[Discovery][/bold blue] Seed set to: [bold cyan]{seed}[/bold cyan]")
 
-def save_results(params, error, elapsed_time, seed, Rj_final, target_scaled, output_dir, optimizer_name, bounds):
+def save_results(params, error, elapsed_time, seed, Rj_final, target_scaled, output_dir, optimizer_name, bounds, mission_id):
     """
     Saves optimization results and metrics to a JSON file and final simulation to NPY.
     """
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-        console.print(fr"[bold blue]\[Discovery][/bold blue] Created output directory: [italic]{output_dir}[/italic]")
+        console.print(fr"[bold blue]\[Discovery][/bold blue] Created mission directory: [italic]{output_dir}[/italic]")
 
     # Calculate metrics and handle NaNs for JSON compliance
     raw_metrics = calculate_errors(Rj_final, target_scaled)
@@ -41,6 +44,8 @@ def save_results(params, error, elapsed_time, seed, Rj_final, target_scaled, out
 
     # Save metrics and params to JSON
     results_data = {
+        "mission_id": mission_id,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "optimizer": optimizer_name,
         "seed": seed,
         "bounds": bounds,
@@ -180,4 +185,61 @@ def plot_results(real, predicted, title="Comparison", output_path=None):
         plt.savefig(output_path, bbox_inches='tight')
         console.print(fr"[bold blue]\[Discovery][/bold blue] Diagnostic plots saved to: [bold green]{output_path}[/bold green]")
     
+    plt.show()
+
+def plot_heatmaps(real_v, predicted_v, Zj, title="Spatial Distribution Comparison", output_path=None):
+    """
+    Creates side-by-side heatmaps for real vs predicted data with interpolation and smoothing.
+    """
+    nlat, nlon = 78, 71
+    
+    def map_to_grid(values, Zj_coords):
+        grid = np.zeros((nlat, nlon))
+        lat_min, lat_max = Zj_coords[:, 0].min(), Zj_coords[:, 0].max()
+        lon_min, lon_max = Zj_coords[:, 1].min(), Zj_coords[:, 1].max()
+        lat_unique = np.linspace(lat_min, lat_max, nlat)
+        lon_unique = np.linspace(lon_min, lon_max, nlon)
+        
+        for i in range(len(values)):
+            lat_idx = np.abs(lat_unique - Zj_coords[i, 0]).argmin()
+            lon_idx = np.abs(lon_unique - Zj_coords[i, 1]).argmin()
+            grid[lat_idx, lon_idx] = values[i]
+        return grid
+
+    real_grid = map_to_grid(real_v, Zj)
+    pred_grid = map_to_grid(predicted_v, Zj)
+
+    fig, axes = plt.subplots(1, 2, figsize=(18, 8))
+    fig.suptitle(title, fontsize=20, y=1.05)
+
+    datasets = [("Predicted Data (Simulated)", pred_grid), ("Real Data (SOSAFE)", real_grid)]
+
+    for i, (d_title, data) in enumerate(datasets):
+        ax = axes[i]
+        rows, cols = data.shape
+        x = np.arange(cols)
+        y = np.arange(rows)
+        
+        # Interpolation to double resolution
+        f = RegularGridInterpolator((y, x), data)
+        x_new = np.linspace(0, cols - 1, cols * 2)
+        y_new = np.linspace(0, rows - 1, rows * 2)
+        xx, yy = np.meshgrid(x_new, y_new)
+        pts = np.array([yy.flatten(), xx.flatten()]).T
+        z = f(pts).reshape(xx.shape)
+        
+        # Gaussian smoothing
+        z_smooth = gaussian_filter(z, sigma=0.05)
+        
+        im = ax.imshow(z_smooth, cmap='magma_r', extent=[0, cols, 0, rows], origin='lower')
+        ax.set_title(d_title, fontsize=14)
+        ax.set_xlabel('Longitude Index', fontsize=12)
+        ax.set_ylabel('Latitude Index', fontsize=12)
+        ax.grid(True, linestyle='--', alpha=0.3)
+        plt.colorbar(im, ax=ax, shrink=0.7, label='Intensity')
+
+    plt.tight_layout()
+    if output_path:
+        plt.savefig(output_path, bbox_inches='tight')
+        console.print(fr"[bold blue]\[Discovery][/bold blue] Heatmap saved to: [bold green]{output_path}[/bold green]")
     plt.show()
