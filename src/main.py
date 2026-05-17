@@ -97,6 +97,7 @@ def main():
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
     parser.add_argument("--output_dir", type=str, default="results", help="Base directory to save results")
     parser.add_argument("--save", action="store_true", help="Save results to disk")
+    parser.add_argument("--benchmark", action="store_true", help="Run performance benchmark (NumPy vs CuPy vs PyTorch)")
 
     args = parser.parse_args()
 
@@ -135,6 +136,13 @@ def main():
 
     # Reproducibility
     set_seed(args.seed)
+
+    if args.benchmark:
+        from src.benchmark import perform_benchmark
+        # Use baseline params for benchmark
+        baseline_params = [0.1, 0.19, 0.97, 0.034] 
+        perform_benchmark(args.data_dir, baseline_params)
+        return
 
     # Mission Identifier and Directory Setup
     mission_id = datetime.now().strftime("%Y%m%d_%H%M%S")

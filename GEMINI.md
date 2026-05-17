@@ -40,7 +40,12 @@ python src/main.py --optimizer pso --max_iter 100 --pop_size 20 --seed 42 --save
 ruff check src/
 ```
 
-**4. Flags Disponibles:**
+**4. Benchmark de Rendimiento:**
+```bash
+python src/main.py --benchmark
+```
+
+**5. Flags Disponibles:**
 - `--data_dir`: Ruta a los archivos `.dat` y `.npy` (default: `data`).
 - `--method`: Método de suavizado (`linear` o `lowess`).
 - `--Nt` / `--Ntt`: Parámetros de pasos de tiempo de la simulación.

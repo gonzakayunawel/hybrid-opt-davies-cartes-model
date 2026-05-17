@@ -38,6 +38,11 @@ The main entry point is `src/main.py`. You can choose between two optimization a
 python src/main.py --optimizer pso --max_iter 10 --pop_size 5 --seed 42 --save --plot
 ```
 
+**Run a performance benchmark (NumPy vs CuPy vs PyTorch):**
+```bash
+python src/main.py --benchmark
+```
+
 ### 4. Understanding the Controls
 - `--optimizer`: Choose `de` (recommended for robust global search) or `pso`.
 - `--max_iter`: How many generations the algorithm will run (higher = better convergence).
