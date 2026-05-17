@@ -155,26 +155,27 @@ def perform_benchmark(data_dir, params):
     """
     from src.main import load_data
     
-    console.print(fr"[bold blue]\[Benchmark][/bold blue] Loading data from {data_dir}...")
-    origin, destination, targets, distances = load_data(data_dir)
-    Ii = origin + destination
+    with console.status(r"[bold blue]\[Benchmark][/bold blue] Loading data..."):
+        origin, destination, targets, distances = load_data(data_dir)
+        Ii = origin + destination
     
     beta_r, gamma_r, alpha_p, gamma_p = params
     
     # 1. NumPy Benchmark (Ground Truth)
-    console.print("Running [bold yellow]NumPy (Ground Truth)[/bold yellow] simulation...")
-    Rj_np, time_np = run_simulation_numpy(distances, Ii, targets, beta_r, gamma_r, alpha_p, gamma_p)
+    with console.status("Running [bold yellow]NumPy (Ground Truth)[/bold yellow] simulation..."):
+        Rj_np, time_np = run_simulation_numpy(distances, Ii, targets, beta_r, gamma_r, alpha_p, gamma_p)
     
     # 2. CuPy Benchmark
-    console.print("Running [bold green]CuPy[/bold green] simulation...")
-    Rj_cp, time_cp = run_simulation_cupy(distances, Ii, targets, beta_r, gamma_r, alpha_p, gamma_p)
+    with console.status("Running [bold green]CuPy[/bold green] simulation..."):
+        Rj_cp, time_cp = run_simulation_cupy(distances, Ii, targets, beta_r, gamma_r, alpha_p, gamma_p)
     
     # 3. PyTorch Benchmark (CPU/GPU)
-    console.print(fr"Running [bold cyan]PyTorch ({torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU'})[/bold cyan] simulation...")
-    model = DaviesModel(distances, Ii, targets)
-    start_pt = time.time()
-    Rj_pt = model.run_simulation(beta_r, gamma_r, alpha_p, gamma_p)
-    time_pt = time.time() - start_pt
+    device_name = torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU'
+    with console.status(fr"Running [bold cyan]PyTorch ({device_name})[/bold cyan] simulation..."):
+        model = DaviesModel(distances, Ii, targets)
+        start_pt = time.time()
+        Rj_pt = model.run_simulation(beta_r, gamma_r, alpha_p, gamma_p)
+        time_pt = time.time() - start_pt
     
     # Validation Logic
     def get_errors(ground_truth, predicted):
@@ -182,7 +183,7 @@ def perform_benchmark(data_dir, params):
             return "N/A", "N/A"
         max_err = np.max(np.abs(ground_truth - predicted))
         rmse = np.sqrt(np.mean((ground_truth - predicted)**2))
-        return fr"{max_err:.2e}", fr"{rmse:.2e}"
+        return f"{max_err:.2e}", f"{rmse:.2e}"
 
     cp_max, cp_rmse = get_errors(Rj_np, Rj_cp)
     pt_max, pt_rmse = get_errors(Rj_np, Rj_pt)
@@ -195,14 +196,14 @@ def perform_benchmark(data_dir, params):
     table.add_column("Max Error", style="red")
     table.add_column("RMSE", style="red")
     
-    table.add_row("NumPy (CPU)", fr"{time_np:.4f}", "1.00x", "0.00e+00", "0.00e+00")
+    table.add_row("NumPy (CPU)", f"{time_np:.4f}", "1.00x", "0.00e+00", "0.00e+00")
     
     if time_cp:
-        table.add_row("CuPy (GPU)", fr"{time_cp:.4f}", fr"{time_np/time_cp:.2f}x", cp_max, cp_rmse)
+        table.add_row("CuPy (GPU)", f"{time_cp:.4f}", f"{time_np/time_cp:.2f}x", cp_max, cp_rmse)
     else:
         table.add_row("CuPy (GPU)", "N/A", "N/A", "N/A", "N/A")
         
-    table.add_row(fr"PyTorch ({'GPU' if torch.cuda.is_available() else 'CPU'})", fr"{time_pt:.4f}", fr"{time_np/time_pt:.2f}x", pt_max, pt_rmse)
+    table.add_row(f"PyTorch ({'GPU' if torch.cuda.is_available() else 'CPU'})", f"{time_pt:.4f}", f"{time_np/time_pt:.2f}x", pt_max, pt_rmse)
     
     console.print(table)
     

@@ -4,6 +4,8 @@ import torch
 import random
 import json
 import os
+import platform
+import psutil
 from datetime import datetime
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from scipy.stats import ks_2samp
@@ -11,8 +13,39 @@ from scipy.interpolate import RegularGridInterpolator
 from scipy.ndimage import gaussian_filter
 from rich.console import Console
 from rich.table import Table
+from rich.panel import Panel
 
 console = Console()
+
+def get_system_info():
+    """
+    Detects hardware characteristics: CPU, RAM, and GPU.
+    """
+    info = {
+        "os": f"{platform.system()} {platform.release()}",
+        "cpu": platform.processor() or "Unknown CPU",
+        "cores": psutil.cpu_count(logical=True),
+        "ram": f"{psutil.virtual_memory().total / (1024**3):.2f} GB",
+        "gpu": "None"
+    }
+    
+    if torch.cuda.is_available():
+        info["gpu"] = torch.cuda.get_device_name(0)
+    
+    return info
+
+def print_system_info():
+    """
+    Prints system hardware information in a rich Panel.
+    """
+    info = get_system_info()
+    content = (
+        f"[bold cyan]OS:[/bold cyan] {info['os']}\n"
+        f"[bold cyan]CPU:[/bold cyan] {info['cpu']} ({info['cores']} cores)\n"
+        f"[bold cyan]RAM:[/bold cyan] {info['ram']}\n"
+        f"[bold cyan]GPU:[/bold cyan] {info['gpu']}"
+    )
+    console.print(Panel(content, title=r"[bold blue]\[AGS-S 201 Discovery] Hardware Diagnostics[/bold blue]", expand=False))
 
 def set_seed(seed: int):
     """
@@ -25,7 +58,7 @@ def set_seed(seed: int):
         torch.cuda.manual_seed_all(seed)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
-    console.print(fr"[bold blue]\[Discovery][/bold blue] Seed set to: [bold cyan]{seed}[/bold cyan]")
+    console.print(r"[bold blue]\[Discovery][/bold blue] Seed set to: [bold cyan]" + str(seed) + r"[/bold cyan]")
 
 def save_results(params, error, elapsed_time, seed, Rj_final, target_scaled, output_dir, optimizer_name, bounds, mission_id):
     """
@@ -33,7 +66,7 @@ def save_results(params, error, elapsed_time, seed, Rj_final, target_scaled, out
     """
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-        console.print(fr"[bold blue]\[Discovery][/bold blue] Created mission directory: [italic]{output_dir}[/italic]")
+        console.print(r"[bold blue]\[Discovery][/bold blue] Created mission directory: [italic]" + output_dir + r"[/italic]")
 
     # Calculate metrics and handle NaNs for JSON compliance
     raw_metrics = calculate_errors(Rj_final, target_scaled)
@@ -63,7 +96,7 @@ def save_results(params, error, elapsed_time, seed, Rj_final, target_scaled, out
     npy_path = os.path.join(output_dir, f"{optimizer_name}_Rj_final.npy")
     np.save(npy_path, Rj_final)
 
-    console.print(fr"[bold blue]\[Discovery][/bold blue] Results saved to: [bold green]{output_dir}[/bold green]")
+    console.print(r"[bold blue]\[Discovery][/bold blue] Results saved to: [bold green]" + output_dir + r"[/bold green]")
 
 def calculate_errors(predicted, real):
     """
@@ -150,7 +183,7 @@ def plot_results(real, predicted, title="Optimization Analysis", output_dir=None
     if output_dir:
         path = os.path.join(output_dir, f"{prefix}ranked_activity.png")
         fig1.savefig(path, bbox_inches='tight')
-        console.print(f"[bold blue]\[Discovery][/bold blue] Ranked activity plot saved to: [bold green]{path}[/bold green]")
+        console.print(r"[bold blue]\[Discovery][/bold blue] Ranked activity plot saved to: [bold green]" + path + r"[/bold green]")
     plt.show()
     plt.close(fig1)
 
@@ -167,7 +200,7 @@ def plot_results(real, predicted, title="Optimization Analysis", output_dir=None
     if output_dir:
         path = os.path.join(output_dir, f"{prefix}density_distribution.png")
         fig2.savefig(path, bbox_inches='tight')
-        console.print(f"[bold blue]\[Discovery][/bold blue] Density distribution plot saved to: [bold green]{path}[/bold green]")
+        console.print(r"[bold blue]\[Discovery][/bold blue] Density distribution plot saved to: [bold green]" + path + r"[/bold green]")
     plt.show()
     plt.close(fig2)
 
@@ -193,7 +226,7 @@ def plot_results(real, predicted, title="Optimization Analysis", output_dir=None
     if output_dir:
         path = os.path.join(output_dir, f"{prefix}ecdf.png")
         fig3.savefig(path, bbox_inches='tight')
-        console.print(f"[bold blue]\[Discovery][/bold blue] ECDF plot saved to: [bold green]{path}[/bold green]")
+        console.print(r"[bold blue]\[Discovery][/bold blue] ECDF plot saved to: [bold green]" + path + r"[/bold green]")
     plt.show()
     plt.close(fig3)
 
@@ -210,7 +243,7 @@ def plot_results(real, predicted, title="Optimization Analysis", output_dir=None
     if output_dir:
         path = os.path.join(output_dir, f"{prefix}residuals.png")
         fig4.savefig(path, bbox_inches='tight')
-        console.print(f"[bold blue]\[Discovery][/bold blue] Residuals plot saved to: [bold green]{path}[/bold green]")
+        console.print(r"[bold blue]\[Discovery][/bold blue] Residuals plot saved to: [bold green]" + path + r"[/bold green]")
     plt.show()
     plt.close(fig4)
 
@@ -270,5 +303,5 @@ def plot_heatmaps(real_v, predicted_v, Zj, title="Spatial Distribution Compariso
     if output_dir:
         path = os.path.join(output_dir, f"{prefix}spatial_heatmap.png")
         plt.savefig(path, bbox_inches='tight')
-        console.print(f"[bold blue]\[Discovery][/bold blue] Heatmap saved to: [bold green]{path}[/bold green]")
+        console.print(r"[bold blue]\[Discovery][/bold blue] Heatmap saved to: [bold green]" + path + r"[/bold green]")
     plt.show()

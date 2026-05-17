@@ -12,7 +12,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.engine import DaviesModel
 from src.preprocessing import scale_data, process_simulation_output
-from src.utils import print_metrics, plot_results, set_seed, save_results, plot_heatmaps
+from src.utils import print_metrics, plot_results, set_seed, save_results, plot_heatmaps, print_system_info
 from src.optimizers import DifferentialEvolutionOptimizer, ParticleSwarmOptimizer
 from rich.console import Console
 from scipy.optimize import minimize
@@ -27,7 +27,7 @@ def load_config(config_path):
         with open(config_path, "r") as f:
             return json.load(f)
     except FileNotFoundError:
-        console.print(fr"[bold red]\[Error][/bold red] Config file not found at {config_path}. Using default bounds.")
+        console.print(r"[bold red]\[Error][/bold red] Config file not found at " + config_path + ". Using default bounds.")
         return {
             "bounds": {
                 "beta_r": [0.05, 0.15],
@@ -48,7 +48,7 @@ def load_data(data_dir):
         distances = np.load(os.path.join(data_dir, "rij_500_no_network.npy"))
         return origin, destination, targets, distances
     except Exception as e:
-        print(f"Error loading data: {e}")
+        console.print(r"[bold red]\[Error][/bold red] Loading data: " + str(e))
         sys.exit(1)
 
 def objective_function(params, model, target_data, processing_method="linear"):
@@ -101,14 +101,17 @@ def main():
 
     args = parser.parse_args()
 
+    # Hardware Diagnostics
+    print_system_info()
+
     # Load data
-    console.print("Loading data...")
-    origin, destination, targets, distances = load_data(args.data_dir)
-    Ii = origin + destination
+    with console.status("[bold green]Loading mission data..."):
+        origin, destination, targets, distances = load_data(args.data_dir)
+        Ii = origin + destination
 
     # Initialize model
-    console.print("Initializing model...")
-    model = DaviesModel(distances, Ii, targets, Nt=args.Nt, Ntt=args.Ntt)
+    with console.status("[bold green]Initializing simulation engine..."):
+        model = DaviesModel(distances, Ii, targets, Nt=args.Nt, Ntt=args.Ntt)
 
     # Prepare target data (Scaled Zj)
     target_raw = targets[:, 2]
@@ -142,6 +145,7 @@ def main():
         # Use baseline params for benchmark
         baseline_params = [0.1, 0.19, 0.97, 0.034] 
         perform_benchmark(args.data_dir, baseline_params)
+        console.print(r"[bold blue]\[Discovery][/bold blue] Benchmark mission completed.")
         return
 
     # Mission Identifier and Directory Setup
@@ -156,39 +160,41 @@ def main():
     elapsed_time = 0.0
 
     if args.optimizer == "de":
-        optimizer = DifferentialEvolutionOptimizer(
-            objective_function,
-            bounds_de,
-            maxiter=args.max_iter,
-            popsize=args.pop_size
-        )
-        best_params, best_error, elapsed_time = optimizer.optimize(model, target_scaled, args.method)
+        with console.status(f"[bold yellow]Running {args.optimizer.upper()} optimization..."):
+            optimizer = DifferentialEvolutionOptimizer(
+                objective_function,
+                bounds_de,
+                maxiter=args.max_iter,
+                popsize=args.pop_size
+            )
+            best_params, best_error, elapsed_time = optimizer.optimize(model, target_scaled, args.method)
 
     elif args.optimizer == "pso":
         def pso_objective(params):
             return objective_function(params, model, target_scaled, args.method)
 
-        optimizer = ParticleSwarmOptimizer(
-            pso_objective,
-            bounds_pso,
-            max_iter=args.max_iter,
-            n_particles=args.pop_size
-        )
-        best_params, best_error, pso_time = optimizer.optimize()
+        with console.status(f"[bold yellow]Running {args.optimizer.upper()} optimization..."):
+            optimizer = ParticleSwarmOptimizer(
+                pso_objective,
+                bounds_pso,
+                max_iter=args.max_iter,
+                n_particles=args.pop_size
+            )
+            best_params, best_error, pso_time = optimizer.optimize()
         
         # HYBRID REFINEMENT: L-BFGS-B polishing for PSO
-        console.print("Polishing PSO solution with [bold yellow]L-BFGS-B[/bold yellow]...")
-        polish_start = time.time()
-        res = minimize(
-            objective_function,
-            best_params,
-            args=(model, target_scaled, args.method),
-            method='L-BFGS-B',
-            bounds=bounds_de
-        )
-        best_params = res.x
-        best_error = res.fun
-        elapsed_time = pso_time + (time.time() - polish_start)
+        with console.status("[bold blue]Polishing PSO solution with L-BFGS-B..."):
+            polish_start = time.time()
+            res = minimize(
+                objective_function,
+                best_params,
+                args=(model, target_scaled, args.method),
+                method='L-BFGS-B',
+                bounds=bounds_de
+            )
+            best_params = res.x
+            best_error = res.fun
+            elapsed_time = pso_time + (time.time() - polish_start)
 
     console.print("\n[bold green]Optimization Completed![/bold green]")
     console.print(f"Best Parameters: [bold yellow]{best_params}[/bold yellow]")
@@ -196,13 +202,15 @@ def main():
     console.print(f"Total Time: [bold yellow]{elapsed_time:.2f}s[/bold yellow]")
 
     # Final Run
-    console.print("\nRunning final simulation with best parameters...")
-    if isinstance(best_params, np.ndarray):
-        best_params = best_params.tolist()
+    with console.status("[bold cyan]Running final simulation and generating metrics..."):
+        if isinstance(best_params, np.ndarray):
+            best_params_list = best_params.tolist()
+        else:
+            best_params_list = best_params
 
-    Rj_final = model.run_simulation(*best_params)
-    processed_Rj = process_simulation_output(Rj_final, method=args.method)
-    scaled_Rj, _ = scale_data(processed_Rj)
+        Rj_final = model.run_simulation(*best_params_list)
+        processed_Rj = process_simulation_output(Rj_final, method=args.method)
+        scaled_Rj, _ = scale_data(processed_Rj)
 
     print_metrics(scaled_Rj, target_scaled)
 
@@ -221,8 +229,11 @@ def main():
         )
 
     if args.plot:
-        plot_results(target_scaled, scaled_Rj, title=f"Optimization Result ({args.optimizer.upper()})", output_dir=mission_dir if args.save else None, optimizer_name=args.optimizer if args.save else None)
-        plot_heatmaps(target_scaled, scaled_Rj, targets, title=f"Spatial Intensity Map ({args.optimizer.upper()})", output_dir=mission_dir if args.save else None, optimizer_name=args.optimizer if args.save else None)
+        with console.status("[bold magenta]Generating visualization plots..."):
+            plot_results(target_scaled, scaled_Rj, title=f"Optimization Result ({args.optimizer.upper()})", output_dir=mission_dir if args.save else None, optimizer_name=args.optimizer if args.save else None)
+            plot_heatmaps(target_scaled, scaled_Rj, targets, title=f"Spatial Intensity Map ({args.optimizer.upper()})", output_dir=mission_dir if args.save else None, optimizer_name=args.optimizer if args.save else None)
+
+    console.print(r"\n[bold green]\[Discovery][/bold green] Mission successful. All systems nominal.".replace(r"\n", "\n"))
 
 if __name__ == "__main__":
     main()
