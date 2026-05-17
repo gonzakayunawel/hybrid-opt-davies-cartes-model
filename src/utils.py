@@ -122,29 +122,62 @@ def print_metrics(predicted, real):
 
 def plot_results(real, predicted, title="Comparison", output_path=None):
     """
-    Plots the real vs predicted values.
+    Plots the real vs predicted values including time-series, histograms, and ECDF.
     """
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
-    fig.suptitle(title, fontsize=16, y=1.05)
+    fig, axs = plt.subplots(2, 2, figsize=(16, 12))
+    fig.suptitle(title, fontsize=20, y=1.02)
 
-    x1 = np.arange(len(real))
-    ax1.plot(x1, real, label='Real')
-    ax1.set_xlabel('Index')
-    ax1.set_ylabel('Value')
-    ax1.set_title('Real Data')
-    ax1.grid(True, linestyle='--', alpha=0.5)
+    # 1. Time-Series Comparison
+    x = np.arange(len(real))
+    axs[0, 0].plot(x, real, label='Real', color='blue', alpha=0.7)
+    axs[0, 0].plot(x, predicted, label='Predicted', color='orange', alpha=0.7)
+    axs[0, 0].set_title('Time-Series Comparison', fontsize=14)
+    axs[0, 0].set_xlabel('Index')
+    axs[0, 0].set_ylabel('Scaled Intensity')
+    axs[0, 0].legend()
+    axs[0, 0].grid(True, linestyle='--', alpha=0.5)
 
-    x2 = np.arange(len(predicted))
-    ax2.plot(x2, predicted, label='Predicted', color='orange')
-    ax2.set_xlabel('Index')
-    ax2.set_ylabel('Value')
-    ax2.set_title('Predicted Data')
-    ax2.grid(True, linestyle='--', alpha=0.5)
+    # 2. Histogram / Density Comparison
+    axs[0, 1].hist(real, bins=30, alpha=0.5, label='Real', color='blue', density=True)
+    axs[0, 1].hist(predicted, bins=30, alpha=0.5, label='Predicted', color='orange', density=True)
+    axs[0, 1].set_title('Distribution Comparison (Histogram)', fontsize=14)
+    axs[0, 1].set_xlabel('Scaled Value')
+    axs[0, 1].set_ylabel('Density')
+    axs[0, 1].legend()
+    axs[0, 1].grid(True, linestyle='--', alpha=0.3)
+
+    # 3. ECDF Comparison (Empirical Cumulative Distribution Function)
+    def ecdf(data):
+        """Compute ECDF for a 1D array."""
+        x = np.sort(data)
+        n = x.size
+        y = np.arange(1, n + 1) / n
+        return x, y
+
+    x_real, y_real = ecdf(real)
+    x_pred, y_pred = ecdf(predicted)
+
+    axs[1, 0].step(x_real, y_real, label='Real ECDF', color='blue', where='post')
+    axs[1, 0].step(x_pred, y_pred, label='Predicted ECDF', color='orange', where='post')
+    axs[1, 0].set_title('ECDF Comparison (KS Test Basis)', fontsize=14)
+    axs[1, 0].set_xlabel('Value')
+    axs[1, 0].set_ylabel('F(x)')
+    axs[1, 0].legend()
+    axs[1, 0].grid(True, linestyle='--', alpha=0.5)
+
+    # 4. Residuals Plot
+    residuals = real - predicted
+    axs[1, 1].scatter(x, residuals, alpha=0.5, color='purple', s=10)
+    axs[1, 1].axhline(0, color='black', linestyle='--')
+    axs[1, 1].set_title('Residuals (Real - Predicted)', fontsize=14)
+    axs[1, 1].set_xlabel('Index')
+    axs[1, 1].set_ylabel('Error')
+    axs[1, 1].grid(True, linestyle='--', alpha=0.5)
 
     plt.tight_layout()
     
     if output_path:
-        plt.savefig(output_path)
-        console.print(fr"[bold blue]\[Discovery][/bold blue] Plot saved to: [bold green]{output_path}[/bold green]")
+        plt.savefig(output_path, bbox_inches='tight')
+        console.print(fr"[bold blue]\[Discovery][/bold blue] Diagnostic plots saved to: [bold green]{output_path}[/bold green]")
     
     plt.show()
